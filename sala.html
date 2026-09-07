@@ -392,6 +392,16 @@ td.n{text-align:right;font-family:var(--display);font-size:16px}
   border:1px solid var(--linea);border-radius:10px;padding:11px 13px;margin-bottom:8px;
   background:rgba(0,0,0,.2)}
 .sala-item .btn{padding:8px 14px;font-size:13px;flex:0 0 auto}
+
+/* ══════ instrucciones ══════ */
+.instr-sec{margin-bottom:30px}
+.instr-sec h2{margin-bottom:10px}
+.instr-txt{font-size:13.5px;line-height:1.5;color:var(--apag);margin:0}
+.instr-cartas{--w:36px;--h:50px;display:flex;gap:6px;margin-bottom:9px}
+.instr-pasos{display:flex;flex-direction:column;gap:18px}
+.instr-paso b{display:block;margin-bottom:4px;font:600 14px var(--sans);color:var(--hueso)}
+.instr-especial{display:flex;flex-direction:column;margin-bottom:16px}
+.instr-especial:last-child{margin-bottom:0}
 </style>
 <body>
 <div id="app"></div>
@@ -462,15 +472,90 @@ function vistaInicio(){
       <button class="btn fila-entra" style="animation-delay:.25s" onclick="irCrear()">Crear sala</button>
       <button class="btn ghost fila-entra" style="animation-delay:.38s" onclick="irPublicas()">Unirse a una sala pública</button>
       <button class="btn ghost fila-entra" style="animation-delay:.51s" onclick="location.href='canaston.html'">Jugar en un dispositivo</button>
+      <button class="btn ghost fila-entra" style="animation-delay:.64s" onclick="irInstrucciones()">Instrucciones</button>
     </div>
   </div>`;
 }
 function irCrear(){ pantallaInicial = "crear"; pintar(); }
 function irPublicas(){ verPublicas(); }
+function irInstrucciones(){ pantallaInicial = "instrucciones"; pintar(); }
 function volverInicio(){
   pantallaInicial = "inicio";
   clearInterval(pollingSalas); pollingSalas = null;
   pintar();
+}
+
+/* ── instrucciones: mini-cartas de ejemplo, sin motor real de por medio ── */
+function vistaInstrucciones(){
+  const PICAS={c:"♠",roja:false}, CORAZONES={c:"♥",roja:true}, DIAMANTES={c:"♦",roja:true}, TREBOL={c:"♣",roja:false};
+  const c = (r,p,o) => htmlCarta({rango:r, palo:p}, o);
+  const joker = htmlCarta({rango:0, palo:null});
+  const fila = (...cs) => `<div class="instr-cartas">${cs.join("")}</div>`;
+
+  app.innerHTML = `<div class="pantalla">
+    <button class="btn ghost" style="font-size:12.5px;padding:7px 12px;margin-bottom:18px" onclick="volverInicio()">← Volver</button>
+    <h1 style="margin-bottom:22px">Cómo se juega</h1>
+
+    <div class="instr-sec">
+      <h2>Objetivo</h2>
+      <p class="instr-txt">Sumar puntos bajando trios y canastas hasta llegar a la meta (10000, o 6000 en partida corta). Las cartas que te quedan en la mano al final restan.</p>
+    </div>
+
+    <div class="instr-sec">
+      <h2>Tu turno, en 3 pasos</h2>
+      <div class="instr-pasos">
+        <div class="instr-paso">
+          ${fila(htmlDorso(""))}
+          <b>1. Roba</b>
+          <p class="instr-txt">Una carta del taco, o todo el pozo si te sirve la de arriba.</p>
+        </div>
+        <div class="instr-paso">
+          ${fila(c(7,PICAS),c(7,DIAMANTES),c(7,TREBOL))}
+          <b>2. Baja</b>
+          <p class="instr-txt">Trios (o más) del mismo número, y añade cartas a los tuyos ya bajados. Es opcional.</p>
+        </div>
+        <div class="instr-paso">
+          ${fila(c(9,CORAZONES,{cls:"sel"}))}
+          <b>3. Descarta</b>
+          <p class="instr-txt">Termina soltando una carta al pozo. Si te has quedado sin cartas al bajar, es obligatorio guardarte una para poder descartarla.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="instr-sec">
+      <h2>Cartas especiales</h2>
+      <div class="instr-especial">
+        ${fila(c(2,PICAS),c(2,CORAZONES),joker)}
+        <p class="instr-txt"><b>Comodines</b> · los 2 y los jokers. Sustituyen a cualquier carta, hasta 3 por juego.</p>
+      </div>
+      <div class="instr-especial">
+        ${fila(c(3,PICAS),c(3,TREBOL),c(3,PICAS))}
+        <p class="instr-txt"><b>Tapón</b> · un trío de 3 negros bloquea el pozo mientras esté encima: nadie puede cogerlo entero.</p>
+      </div>
+      <div class="instr-especial">
+        ${fila(c(3,CORAZONES),c(3,DIAMANTES))}
+        <p class="instr-txt"><b>Flor</b> · los 3 rojos son puntos de regalo. Salen solos al robarlos y nunca se juegan.</p>
+      </div>
+    </div>
+
+    <div class="instr-sec">
+      <h2>La canasta</h2>
+      <div class="instr-especial">
+        ${fila(c(4,PICAS),c(4,CORAZONES),c(4,TREBOL),c(4,DIAMANTES),c(4,PICAS),c(4,CORAZONES),c(4,TREBOL))}
+        <p class="instr-txt">7 cartas del mismo número cierran una <b>canasta</b>: <span style="color:var(--oro)">limpia</span> (sin comodines, vale más) o <span style="color:var(--apag)">sucia</span> (con algún comodín). Una vez cerrada se puede seguir añadiendo cartas; si era limpia, se vuelve sucia. Y si te sobran, puedes abrir un segundo juego del mismo número.</p>
+      </div>
+    </div>
+
+    <div class="instr-sec">
+      <h2>Para empezar a bajar</h2>
+      <p class="instr-txt">La primera vez que bajas necesitas reunir un mínimo de puntos entre lo que bajas (depende de cómo vayas de puntos en la partida). Después de esa primera bajada ya puedes añadir cartas libremente.</p>
+    </div>
+
+    <div class="instr-sec">
+      <h2>Fin de la mano</h2>
+      <p class="instr-txt">La ronda se acaba cuando alguien se queda sin cartas tras descartar (y su equipo tiene ya alguna canasta cerrada). Entonces se cuentan los puntos de todos.</p>
+    </div>
+  </div>`;
 }
 
 function vistaEntrada(){
@@ -1061,6 +1146,7 @@ function pintar(){
     if (new URLSearchParams(location.search).get("sala")) return vistaEntrada();
     if (pantallaInicial === "publicas") return vistaSalasPublicas();
     if (pantallaInicial === "crear") return vistaEntrada();
+    if (pantallaInicial === "instrucciones") return vistaInstrucciones();
     return vistaInicio();
   }
   if(!V)return vistaEspera();
