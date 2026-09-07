@@ -125,7 +125,8 @@ function crearPartida(cfg){
     cfg: {
       nombres: cfg.nombres.slice(),
       parejas: !!cfg.parejas,
-      objetivo: cfg.objetivo || 10000
+      objetivo: cfg.objetivo || 10000,
+      barajas: cfg.barajas || (cfg.nombres.length === 2 ? 2 : 3)
     },
     _sigId: () => ++n,
     _rnd: cfg.rnd || Math.random,
@@ -146,7 +147,7 @@ function crearPartida(cfg){
 
 function repartir(e){
   const n = e.jugadores.length;
-  const mazo = construirMazo(n === 2 ? 2 : 3, e._sigId, e._rnd);
+  const mazo = construirMazo(e.cfg.barajas, e._sigId, e._rnd);
   e.grupos.forEach(g => {
     g.combis = []; g.flores = []; g.abierto = false; g.cogioPozo = false; g.turnos = 0;
   });
@@ -434,6 +435,9 @@ const ACCIONES = {
   añadir(e,g,j,d){
     const i = j.mano.findIndex(c => c.id === d.carta);
     if (i < 0) return "esa carta no está en tu mano";
+    // hay que cerrar descartando: no se puede jugar la última carta a una
+    // escalera y quedarse sin nada que echar al pozo
+    if (j.mano.length === 1) return "tienes que cerrar descartando una carta";
     const combi = g.combis[d.escalera];
     if (!combi) return "esa escalera no existe";
     const carta = j.mano[i];
@@ -489,7 +493,10 @@ const ACCIONES = {
 };
 
 function cartasParaAbrir(carta, mano){
-  if (esTresNegro(carta)) return mano.filter(esTresNegro).slice(0,3);
+  if (esTresNegro(carta)){
+    const negros = mano.filter(esTresNegro);
+    return negros.length >= 3 ? negros.slice(0,3) : [];
+  }
   if (esMono(carta)){
     const ms = mano.filter(esMono).sort((a,b) => valor(a) - valor(b));
     return ms.length >= 5 ? ms.slice(0,5) : [];
@@ -503,6 +510,8 @@ function cartasParaAbrir(carta, mano){
   return [];
 }
 function bajarGrupo(e,g,j,cartas,clave){
+  // igual que al añadir: hay que guardarse una carta para cerrar descartando
+  if (cartas.length >= j.mano.length) return "tienes que cerrar descartando una carta";
   const combi = {clave, cartas:[]};
   g.combis.push(combi);
   cartas.forEach(c => {

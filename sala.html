@@ -450,7 +450,8 @@ function abandonar(){
 }
 
 /* ── vestíbulo ── */
-let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:true};
+let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:true, barajas:2};
+const opcionesBarajas = plazas => plazas===4 ? [3,4] : [2,3];
 let pantallaInicial = "inicio", salasPublicas = [], pollingSalas = null;
 
 /* ── portada ── */
@@ -480,13 +481,15 @@ function vistaEntrada(){
     <h1>Canastón</h1>
     <p class="meta" style="margin-bottom:24px">${invitado ? "Te han invitado a la sala "+esc(invitado) : "Crea una sala y comparte el enlace"}</p>
     <div class="campo"><label>Tu nombre</label>
-      <input id="nom" value="${esc(cfg.nombre)}" placeholder="Tu nombre" maxlength="14"></div>
+      <input id="nom" value="${esc(cfg.nombre)}" oninput="cfg.nombre=this.value" placeholder="Tu nombre" maxlength="14"></div>
     ${invitado ? "" : `
     <div class="campo"><label>Jugadores</label>
       <div class="seg">${[2,3,4].map(k=>`<button aria-pressed="${cfg.plazas===k}" onclick="setP(${k})">${k}</button>`).join("")}</div></div>
     ${cfg.plazas===4 ? `<div class="campo"><label>Modalidad</label><div class="seg">
       <button aria-pressed="${!cfg.parejas}" onclick="setPar(false)">Individual</button>
       <button aria-pressed="${cfg.parejas}" onclick="setPar(true)">Por parejas</button></div></div>` : ""}
+    <div class="campo"><label>Barajas</label>
+      <div class="seg">${opcionesBarajas(cfg.plazas).map(k=>`<button aria-pressed="${cfg.barajas===k}" onclick="setBarajas(${k})">${k}</button>`).join("")}</div></div>
     <div class="campo"><label>Se gana a</label>
       <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfg.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
     <div class="campo"><label>Quién puede verla</label>
@@ -504,15 +507,20 @@ function vistaEntrada(){
     ${aviso ? `<p class="meta" style="margin-top:16px;color:#e0a29a">${esc(aviso)}</p>` : ""}
   </div>`;
 }
-function setP(k){ cfg.plazas=k; if(k!==4)cfg.parejas=false; pintar(); }
+function setP(k){
+  cfg.plazas=k; if(k!==4)cfg.parejas=false;
+  if(!opcionesBarajas(k).includes(cfg.barajas)) cfg.barajas = k===2?2:3;
+  pintar();
+}
 function setPar(v){ cfg.parejas=v; pintar(); }
 function setO(v){ cfg.objetivo=v; pintar(); }
 function setPublica(v){ cfg.publica=v; pintar(); }
+function setBarajas(v){ cfg.barajas=v; pintar(); }
 function entrar(codigo){
   cfg.nombre = (document.getElementById("nom").value || "").trim() || "Jugador";
   const ir = () => codigo
     ? envio({tipo:"unirse", sala:codigo, nombre:cfg.nombre})
-    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo, publica:cfg.publica});
+    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo, publica:cfg.publica, barajas:cfg.barajas});
   ws && ws.readyState === 1 ? ir() : conectar(ir);
 }
 
@@ -532,7 +540,7 @@ function vistaSalasPublicas(){
     <h1>Salas públicas</h1>
     <p class="meta" style="margin-bottom:20px">Únete directamente, sin enlace</p>
     <div class="campo"><label>Tu nombre</label>
-      <input id="nom" value="${esc(cfg.nombre)}" placeholder="Tu nombre" maxlength="14"></div>
+      <input id="nom" value="${esc(cfg.nombre)}" oninput="cfg.nombre=this.value" placeholder="Tu nombre" maxlength="14"></div>
     ${salasPublicas.length===0
       ? `<p class="meta">No hay ninguna sala pública abierta ahora mismo.</p>`
       : salasPublicas.map((s,i)=>`<div class="sala-item fila-entra" style="animation-delay:${i*60}ms">
@@ -616,7 +624,8 @@ function juegosDe(g,propio){
       <span class="et">${g.flores*100}</span></div>`);
   g.escaleras.forEach(e=>{
     if(e.canasta){
-      lat.push(`<div class="cerrada ${e.limpia?"limpia":"sucia"}" ${propio?`data-exp="${e.indice}"`:""}>
+      lat.push(`<div class="cerrada ${e.limpia?"limpia":"sucia"}"
+          ${propio?`data-exp="${e.indice}" data-drop="juego" data-i="${e.indice}"`:""}>
         <div class="taquito"><div class="carta borde b3"></div><div class="carta borde b2"></div>
           <div class="carta borde b1"></div>${htmlCarta(coronaDe(e),{cls:"corona"})}</div>
         <span class="et">${e.bono}<br><i>${e.limpia?"limpia":"sucia"}</i></span></div>`);
@@ -950,8 +959,10 @@ function grupoShim(){
 function destinos(id){
   const carta=V.yo.mano.find(c=>c.id===id);
   if(!carta||!V.yo.esMiTurno)return [];
-  const g=grupoShim();
   const z=V.yo.faseTurno==="jugar"?["pozo"]:[];
+  // con la última carta hay que cerrar descartándola, no jugarla a una escalera
+  if(V.yo.mano.length===1)return z;
+  const g=grupoShim();
   g.combis.forEach((c,i)=>{ if(cabe(c.clave,c.cartas,carta,g))z.push("juego:"+i); });
   // solo bloquea abrir una nueva si ya tienes una a medias de esa pinta;
   // si la que tienes ya es canasta, se puede abrir otra en paralelo
@@ -971,7 +982,10 @@ function activar(){
   document.querySelectorAll("[data-src]").forEach(el=>el.addEventListener("pointerdown",abajo,{passive:false}));
   document.querySelectorAll("[data-drop]").forEach(el=>el.addEventListener("click",tocarZona));
   document.querySelectorAll("[data-exp]").forEach(el=>
-    el.addEventListener("click",()=>{expandida=+el.dataset.exp;pintar();}));
+    el.addEventListener("click",()=>{
+      if(sel!=null)return;             // hay una carta elegida: prioriza soltarla, no ver el detalle
+      expandida=+el.dataset.exp;pintar();
+    }));
 }
 function tocarZona(e){
   if(sel==null)return;

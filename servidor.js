@@ -44,13 +44,17 @@ const codigo = () => {
 const ficha = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 function nuevaSala(cfg){
+  const plazas = Math.min(4, Math.max(2, cfg.plazas|0 || 2));
+  const opcionesBarajas = plazas === 4 ? [3,4] : [2,3];
+  const barajas = opcionesBarajas.includes(cfg.barajas|0) ? cfg.barajas|0 : (plazas === 2 ? 2 : 3);
   const sala = {
     id: codigo(),
     cfg: {
-      plazas: Math.min(4, Math.max(2, cfg.plazas|0 || 2)),
+      plazas,
       parejas: !!cfg.parejas,
       objetivo: cfg.objetivo === 6000 ? 6000 : 10000,
-      publica: !!cfg.publica
+      publica: !!cfg.publica,
+      barajas
     },
     asientos: [],          // {nombre, ficha, ws}
     estado: null,
@@ -80,7 +84,8 @@ function empezarSiEstaLlena(sala){
   sala.estado = Motor.crearPartida({
     nombres: sala.asientos.map(a => a.nombre),
     parejas: sala.cfg.parejas,
-    objetivo: sala.cfg.objetivo
+    objetivo: sala.cfg.objetivo,
+    barajas: sala.cfg.barajas
   });
 }
 

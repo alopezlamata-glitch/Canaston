@@ -42,6 +42,14 @@ body{
 }
 #mesa.j2{--mw:62px;--mh:87px;--jw:40px;--jh:56px;--pw:66px;--ph:93px;--tw:34px;--th:48px;--aw:30px;--ah:42px}
 #mesa.j4{--mw:44px;--mh:62px;--jw:29px;--jh:41px;--pw:50px;--ph:70px;--tw:25px;--th:35px;--aw:22px;--ah:31px}
+.salir-mesa{
+  position:absolute;z-index:10;top:calc(6px + env(safe-area-inset-top));right:8px;
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--linea);
+  background:rgba(0,0,0,.28);color:var(--apag);font-size:13px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:transform .12s ease,color .12s ease,border-color .12s ease;
+}
+.salir-mesa:active{transform:scale(.9);color:var(--hueso);border-color:var(--oro-hondo)}
 .banda{position:relative;z-index:1;flex:0 0 auto}
 .tira{
   display:flex;gap:7px;align-items:flex-end;overflow-x:auto;
@@ -405,7 +413,7 @@ function nuevaPartida(cfg){
   repartirMano();
 }
 function repartirMano(){
-  const n=G.jugadores.length,mazo=construirMazo(n===2?2:3);
+  const n=G.jugadores.length,mazo=construirMazo(G.cfg.barajas||(n===2?2:3));
   G.grupos.forEach(g=>{g.combis=[];g.flores=[];g.abierto=false;g.cogioPozo=false;g.turnos=0;});
   G.jugadores.forEach(j=>j.mano=[]);
   let corte=null;
@@ -767,7 +775,10 @@ function cogerPozo(){
 // Abrir escalera baja el mínimo completo de una vez (3 cartas, o 5 si son monos).
 // Nunca queda una escalera a medias, y por eso no hace falta poder retirarlas.
 function cartasParaAbrir(carta,mano){
-  if(esTresNegro(carta))return mano.filter(esTresNegro).slice(0,3);
+  if(esTresNegro(carta)){
+    const negros=mano.filter(esTresNegro);
+    return negros.length>=3?negros.slice(0,3):[];
+  }
   if(esMono(carta)){
     const ms=mano.filter(esMono).sort((a,b)=>valor(a)-valor(b));
     return ms.length>=5?ms.slice(0,5):[];
@@ -782,6 +793,8 @@ function cartasParaAbrir(carta,mano){
 }
 function bajarGrupo(cartas,clave){
   const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  // hay que guardarse una carta para cerrar descartando
+  if(cartas.length>=j.mano.length){avisar("Tienes que cerrar descartando una carta",true);return pintar();}
   const combi={clave,cartas:[]};g.combis.push(combi);
   cartas.forEach(c=>{
     j.mano.splice(j.mano.findIndex(x=>x.id===c.id),1);
@@ -834,6 +847,8 @@ function aJuego(cartaId,destino){
   if(destino==="nuevo")return abrirEscalera(cartaId);
   const j=G.jugadores[G.turno],g=grupoDe(G.turno);
   const i=j.mano.findIndex(c=>c.id===cartaId);if(i<0)return;
+  // hay que cerrar descartando, no jugando la última carta a una escalera
+  if(j.mano.length===1){avisar("Tienes que cerrar descartando una carta",true);return pintar();}
   const carta=j.mano[i];
   const combi=g.combis[destino];if(!combi)return;
   if(!cabe(combi.clave,combi.cartas,carta,g)){avisar("Ahí no cabe",true);return pintar();}
@@ -848,6 +863,9 @@ function aJuego(cartaId,destino){
   }
   G.sel=null;avisar("");
   sellarCanastas(g);comprobarEntrega();
+  // te puedes quedar sin cartas metiéndolas en escaleras, no solo
+  // descartando: eso también cierra el reparto
+  if(!j.mano.length)return cerrarMano(j.nombre+" ha cerrado",g.id);
   pintar();
 }
 function descartar(cartaId){
@@ -880,6 +898,11 @@ function descartar(cartaId){
   G.faseTurno="robar";G.fase="traspaso";avisar("");pintar();
 }
 function siguienteMano(){G.repartidor=(G.repartidor+1)%G.jugadores.length;repartirMano();pintar();}
+function abandonarPartida(){
+  if(!confirm("¿Abandonar la partida?"))return;
+  G=null;
+  pintar();
+}
 
 /* ═══════════ pintado ═══════════ */
 const app=document.getElementById("app");
@@ -912,7 +935,8 @@ function cartaCorona(c,g){
 }
 function tacoCanasta(c,g,i,propio){
   const limpia=cuentaComoLimpia(c,g);
-  return `<div class="cerrada ${limpia?"limpia":"sucia"}" ${propio?`data-exp="${i}"`:""}>
+  return `<div class="cerrada ${limpia?"limpia":"sucia"}"
+      ${propio?`data-exp="${i}" data-drop="juego" data-i="${i}"`:""}>
     <div class="taquito">
       <div class="carta borde b3"></div>
       <div class="carta borde b2"></div>
@@ -970,6 +994,7 @@ function vistaTurno(){
 
   app.innerHTML=`
   <div id="mesa" class="j${G.jugadores.length}">
+    <button class="salir-mesa" onclick="abandonarPartida()" aria-label="Salir de la partida">✕</button>
     <!-- cada rival en su asiento, con lo suyo debajo -->
     <div class="banda asientos">
       ${otros.map(x=>{
@@ -1106,9 +1131,7 @@ function vistaTraspaso(){
     <div style="margin-bottom:22px">${htmlDorso("",'--w:74px;--h:104px')}</div>
     <h1>${esc(j.nombre)}</h1>
     <p class="meta" style="margin-bottom:28px">Pasa el dispositivo</p>
-    <div><button class="btn" onclick="G.fase='turno';pintar()">Ver mis cartas</button></div>
-    <p style="margin-top:26px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
-      onclick="cambiarAnimacion()">animación: ${textoAnimacion(G.cfg.animacion)}</button></p></div>`;
+    <div><button class="btn" onclick="G.fase='turno';pintar()">Ver mis cartas</button></div></div>`;
 }
 function vistaFin(){
   const fin=G.fase==="finPartida";
@@ -1139,7 +1162,8 @@ function contarResultados(){
     requestAnimationFrame(paso);
   });
 }
-let cfgTmp={n:4,parejas:false,objetivo:10000,animacion:"siempre",nombres:["Jugador 1","Jugador 2","Jugador 3","Jugador 4"]};
+let cfgTmp={n:4,parejas:false,objetivo:10000,barajas:3,nombres:["Jugador 1","Jugador 2","Jugador 3","Jugador 4"]};
+const opcionesBarajas=n=>n===4?[3,4]:[2,3];
 function vistaSetup(){
   const n=cfgTmp.n;
   app.innerHTML=`<div class="pantalla">
@@ -1148,28 +1172,27 @@ function vistaSetup(){
     <h1>Canastón</h1>
     <p class="meta" style="margin-bottom:24px">Partida local. Se pasa el dispositivo en cada turno.</p>
     <div class="campo"><label>Jugadores</label>
-      <div class="seg">${[2,3,4].map(k=>`<button aria-pressed="${n===k}" onclick="setN(${k})">${k}</button>`).join("")}</div>
-      <p class="meta" style="margin-top:7px">${n===2?"2 barajas":"3 barajas"}</p></div>
+      <div class="seg">${[2,3,4].map(k=>`<button aria-pressed="${n===k}" onclick="setN(${k})">${k}</button>`).join("")}</div></div>
     ${n===4?`<div class="campo"><label>Modalidad</label><div class="seg">
       <button aria-pressed="${!cfgTmp.parejas}" onclick="setP(false)">Individual</button>
       <button aria-pressed="${cfgTmp.parejas}" onclick="setP(true)">Por parejas</button></div>
       </div>`:""}
+    <div class="campo"><label>Barajas</label>
+      <div class="seg">${opcionesBarajas(n).map(k=>`<button aria-pressed="${cfgTmp.barajas===k}" onclick="setBarajas(${k})">${k}</button>`).join("")}</div></div>
     <div class="campo"><label>Se gana a</label>
       <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfgTmp.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
-    <div class="campo"><label>Animaciones</label>
-      <div class="seg">${[["siempre","Sí"],["sistema","Sistema"],["nunca","No"]]
-        .map(([k,t])=>`<button aria-pressed="${cfgTmp.animacion===k}" onclick="setA('${k}')">${t}</button>`).join("")}</div>
-      ${cfgTmp.animacion==="siempre"?`<p class="meta" style="margin-top:7px">Se verán aunque tengas activado Reducir movimiento en el móvil.</p>`:""}</div>
     <div class="campo"><label>Nombres</label>
       ${Array.from({length:n},(_,i)=>`<input value="${esc(cfgTmp.nombres[i]||"Jugador "+(i+1))}" oninput="cfgTmp.nombres[${i}]=this.value">`).join("")}</div>
     <button class="btn" onclick="empezar()">Empezar partida</button></div>`;
 }
-function setN(k){cfgTmp.n=k;if(k!==4)cfgTmp.parejas=false;
+function setN(k){
+  cfgTmp.n=k;if(k!==4)cfgTmp.parejas=false;
+  if(!opcionesBarajas(k).includes(cfgTmp.barajas))cfgTmp.barajas=k===2?2:3;
   while(cfgTmp.nombres.length<k)cfgTmp.nombres.push("Jugador "+(cfgTmp.nombres.length+1));vistaSetup();}
 function setP(v){cfgTmp.parejas=v;vistaSetup();}
 function setO(v){cfgTmp.objetivo=v;vistaSetup();}
-function setA(v){cfgTmp.animacion=v;vistaSetup();}
-function empezar(){nuevaPartida({nombres:cfgTmp.nombres.slice(0,cfgTmp.n),parejas:cfgTmp.parejas,objetivo:cfgTmp.objetivo,animacion:cfgTmp.animacion});pintar();}
+function setBarajas(v){cfgTmp.barajas=v;vistaSetup();}
+function empezar(){nuevaPartida({nombres:cfgTmp.nombres.slice(0,cfgTmp.n),parejas:cfgTmp.parejas,objetivo:cfgTmp.objetivo,barajas:cfgTmp.barajas});pintar();}
 function pintar(){
   if(!G)return vistaSetup();
   if(G.fase==="traspaso")vistaTraspaso();
@@ -1203,20 +1226,8 @@ function reproducirAnuncios(){
 }
 
 /* ═══════════ vuelos de cartas ═══════════ */
-// "siempre" ignora el ajuste del sistema, "sistema" lo respeta, "nunca" las desactiva
-const reduceElSistema=()=>!!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches);
-function sinMovimiento(){
-  const m=G&&G.cfg?G.cfg.animacion:"siempre";
-  if(m==="siempre")return false;
-  if(m==="nunca")return true;
-  return reduceElSistema();
-}
-function cambiarAnimacion(){
-  const orden=["siempre","sistema","nunca"];
-  G.cfg.animacion=orden[(orden.indexOf(G.cfg.animacion)+1)%3];
-  pintar();
-}
-const textoAnimacion=m=>m==="siempre"?"siempre":m==="nunca"?"desactivadas":"según el sistema";
+// las animaciones van siempre activas, ignorando Reducir movimiento del sistema
+function sinMovimiento(){ return false; }
 
 function rectDe(sel){
   const el=document.querySelector(sel);
@@ -1291,6 +1302,8 @@ function objetivosDe(cartaId){
   const carta=mano.find(c=>c.id===cartaId);
   if(!carta)return [];
   const z=G.faseTurno==="jugar"?["pozo"]:[];   // sin robar todavía no se descarta
+  // con la última carta hay que cerrar descartándola, no jugarla a una escalera
+  if(mano.length===1)return z;
   g.combis.forEach((c,i)=>{if(cabe(c.clave,c.cartas,carta,g))z.push("juego:"+i);});
   // escalera nueva: bloqueada solo si ya tienes una a medias de ese rango;
   // si la que tienes ya es canasta, se puede abrir otra en paralelo
@@ -1312,6 +1325,7 @@ function activar(){
   document.querySelectorAll("[data-exp]").forEach(el=>
     el.addEventListener("click",e=>{
       if(e.target.closest("[data-src]"))return;   // el toque era sobre una carta
+      if(G.sel!=null)return;           // hay una carta elegida: prioriza soltarla, no ver el detalle
       const i=+el.dataset.exp;
       G.expandida=(G.expandida===i)?null:i;
       pintar();
