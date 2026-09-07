@@ -67,7 +67,48 @@ recupera solo si el proceso se cae.
 Al terminar, `https://canaston.duckdns.org` debería estar sirviendo el
 juego. Pruébalo desde el móvil y añádelo a la pantalla de inicio.
 
-## 4. Actualizar tras un cambio en el código
+## 4. Conseguir el shape gratis A1.Flex (ARM, 4 OCPU / 24GB) si te da "Out of capacity"
+
+Si al crear la instancia Oracle dice que no hay capacidad para
+`VM.Standard.A1.Flex`, no es un error tuyo: esa región se ha quedado sin
+hueco de ese hardware y se libera de forma intermitente (a veces tarda
+horas, a veces días). La forma de conseguirlo sin estar reintentando a
+mano es dejar un script pidiéndolo cada minuto hasta que entre.
+
+1. Abre **Cloud Shell** en la consola de Oracle (el icono `>_` arriba a
+   la derecha) — ya viene con la OCI CLI autenticada, sin configurar nada.
+2. Consigue los dos datos que pide el script:
+   - **Compartment**: en la consola, icono de perfil (arriba a la
+     derecha) → "Tenancy: ..." → copia el OCID (empieza por
+     `ocid1.tenancy...`).
+   - **Subnet**: la misma que usa tu VM actual. En Cloud Shell:
+     ```bash
+     # lista tus instancias y sus OCID
+     oci compute instance list --compartment-id "TU_TENANCY_OCID" \
+       --query "data[].{nombre:\"display-name\",id:id}"
+     # con el id de tu VM de pago, saca su subred
+     oci compute instance list-vnics --compartment-id "TU_TENANCY_OCID" \
+       --instance-id "OCID_DE_TU_VM" --query "data[0].\"subnet-id\""
+     ```
+3. Sube o clona este repo en Cloud Shell y edita
+   `deploy/conseguir_always_free.sh` rellenando `COMPARTMENT_ID` y
+   `SUBNET_ID` con lo que has sacado arriba.
+4. Ejecútalo dentro de una sesión `tmux` para que sobreviva si Cloud
+   Shell te desconecta por inactividad:
+   ```bash
+   tmux new -s freevm
+   chmod +x deploy/conseguir_always_free.sh
+   ./deploy/conseguir_always_free.sh
+   ```
+   Sal sin matarlo con `Ctrl+B` y luego `D`. Para volver a mirarlo:
+   `tmux attach -t freevm`.
+5. En cuanto Oracle acepte la petición, el script para solo y te dice
+   dónde ver la instancia nueva. A partir de ahí, sigue igual que en el
+   paso 3 de este README (SSH + `instalar.sh`) para instalar el juego
+   en la máquina gratis, actualiza la IP en DuckDNS, comprueba que
+   funciona, y ya puedes terminar la VM de pago.
+
+## 5. Actualizar tras un cambio en el código
 
 Cada vez que haya cambios nuevos en la rama:
 
