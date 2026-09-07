@@ -405,7 +405,10 @@ const ACCIONES = {
     const carta = j.mano.find(c => c.id === d.carta);
     if (!carta) return "esa carta no está en tu mano";
     const clave = claveDe(carta);
-    if (combiDe(g,clave)) return "ya tienes esa escalera";
+    // ya tienes una a medias de esa pinta: hay que completarla, no vale
+    // abrir una segunda en paralelo. Si la que tienes ya es canasta, sí
+    // se puede abrir otra nueva del mismo palo.
+    if (g.combis.some(c => c.clave === clave && !esCanasta(c))) return "ya tienes esa escalera";
     if (!esMono(carta) && !esTresNegro(carta)){
       const nat = j.mano.filter(c => c.rango === carta.rango && !esMono(c));
       if (nat.length === 2 && j.mano.some(esMono)){
@@ -435,9 +438,11 @@ const ACCIONES = {
     if (!combi) return "esa escalera no existe";
     const carta = j.mano[i];
     if (!cabe(combi.clave, combi.cartas, carta, g)) return "ahí no cabe";
+    // cualquier carta de más allá de las 7 que cerraron la canasta la
+    // ensucia, sea comodín o natural
     const eraLimpia = esCanasta(combi) && cuentaComoLimpia(combi,g);
     j.mano.splice(i,1); carta.nueva = true; combi.cartas.push(carta);
-    if (eraLimpia && esMono(carta)) combi.limpia = false;
+    if (eraLimpia) combi.limpia = false;
     if (!salidaSigueViva(e,g)){
       combi.cartas.pop(); carta.nueva = false; j.mano.push(carta);
       if (eraLimpia) combi.limpia = true;

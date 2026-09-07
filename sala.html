@@ -953,8 +953,11 @@ function destinos(id){
   const g=grupoShim();
   const z=V.yo.faseTurno==="jugar"?["pozo"]:[];
   g.combis.forEach((c,i)=>{ if(cabe(c.clave,c.cartas,carta,g))z.push("juego:"+i); });
-  const yaHay=g.combis.some(c=>c.clave===claveDe(carta));
-  if(!yaHay&&cartasParaAbrir(carta,V.yo.mano).length)z.push("nuevo");
+  // solo bloquea abrir una nueva si ya tienes una a medias de esa pinta;
+  // si la que tienes ya es canasta, se puede abrir otra en paralelo
+  const mio=V.grupos[V.miGrupo];
+  const aMedias=mio.escaleras.some(e=>e.clave===claveDe(carta)&&!e.canasta);
+  if(!aMedias&&cartasParaAbrir(carta,V.yo.mano).length)z.push("nuevo");
   return z;
 }
 function marcar(id){

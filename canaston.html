@@ -800,7 +800,9 @@ function abrirEscalera(cartaId){
   const carta=j.mano.find(c=>c.id===cartaId);
   if(!carta)return;
   const clave=claveDe(carta);
-  if(combiDe(g,clave)){avisar("Ya la tienes",true);return pintar();}
+  // ya tienes una a medias de esa pinta: hay que completarla antes.
+  // si la que tienes ya es canasta, se puede abrir otra en paralelo.
+  if(g.combis.some(c=>c.clave===clave&&!esCanasta(c))){avisar("Ya la tienes",true);return pintar();}
 
   // solo dos naturales: hace falta un mono, y decides tú cuál
   if(!esMono(carta)&&!esTresNegro(carta)){
@@ -835,7 +837,7 @@ function aJuego(cartaId,destino){
   if(!cabe(combi.clave,combi.cartas,carta,g)){avisar("Ahí no cabe",true);return pintar();}
   const eraLimpiaCerrada=esCanasta(combi)&&cuentaComoLimpia(combi,g);
   j.mano.splice(i,1);carta.nueva=true;combi.cartas.push(carta);
-  if(eraLimpiaCerrada&&esMono(carta))combi.limpia=false;   // ensuciada a propósito
+  if(eraLimpiaCerrada)combi.limpia=false;   // cualquier carta de más la ensucia
   if(!salidaSigueViva(g)){
     combi.cartas.pop();carta.nueva=false;j.mano.push(carta);
     if(eraLimpiaCerrada)combi.limpia=true;
@@ -1288,8 +1290,11 @@ function objetivosDe(cartaId){
   if(!carta)return [];
   const z=G.faseTurno==="jugar"?["pozo"]:[];   // sin robar todavía no se descarta
   g.combis.forEach((c,i)=>{if(cabe(c.clave,c.cartas,carta,g))z.push("juego:"+i);});
-  // escalera nueva: solo si no tienes ya una de ese rango y puedes completarla
-  if(!combiDe(g,claveDe(carta))&&puedeAbrirJuego(carta,mano))z.push("nuevo");
+  // escalera nueva: bloqueada solo si ya tienes una a medias de ese rango;
+  // si la que tienes ya es canasta, se puede abrir otra en paralelo
+  const clave=claveDe(carta);
+  const aMedias=g.combis.some(c=>c.clave===clave&&!esCanasta(c));
+  if(!aMedias&&puedeAbrirJuego(carta,mano))z.push("nuevo");
   return z;
 }
 function marcarObjetivos(id){
