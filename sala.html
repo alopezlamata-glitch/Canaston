@@ -659,9 +659,8 @@ function contarResultados(){
 
 /* ── anuncios ── */
 let vistos=0;
-function anuncios(){
-  if(!V||!V.sucesos)return;
-  V.sucesos.forEach(s=>{
+function anuncios(sucesos){
+  sucesos.forEach(s=>{
     if(s.tipo==="pumba")soltar("pumba","pumba");
     if(s.tipo==="tapon")soltar("tapón","tapon");
   });
@@ -731,11 +730,11 @@ function unVuelo(html,r0,r1,retraso,dur,alAterrizar){
   an.onfinish=fin;
   setTimeout(fin,retraso+dur+400);           // red de seguridad
 }
-function vuelos(){
-  if(!V||!V.sucesos||!V.sucesos.length)return;
-  const robas=V.sucesos.filter(s=>s.tipo==="roba");
-  const flor=V.sucesos.find(s=>s.tipo==="flor");
-  const cogePozo=V.sucesos.find(s=>s.tipo==="cogePozo");
+function vuelos(sucesos){
+  if(!sucesos.length)return;
+  const robas=sucesos.filter(s=>s.tipo==="roba");
+  const flor=sucesos.find(s=>s.tipo==="flor");
+  const cogePozo=sucesos.find(s=>s.tipo==="cogePozo");
   if(!robas.length&&!flor&&!cogePozo)return;
   const origenTaco=rectDe('[data-drop="taco"] .stack');
   const origenPozo=rectDe('[data-drop="pozo"] .stack');
@@ -857,12 +856,22 @@ function arriba(){
 }
 
 /* ── pintado ── */
+// V es un objeto nuevo cada vez que llega un "estado" del servidor; si
+// pintar() se repite sin que llegue nada nuevo (por ejemplo al seleccionar
+// una carta) hay que evitar reproducir otra vez los mismos vuelos y avisos.
+let vistaSucesosDe = null;
+function sucesosPendientes(){
+  if(!V||!V.sucesos||!V.sucesos.length||V===vistaSucesosDe)return [];
+  vistaSucesosDe = V;
+  return V.sucesos;
+}
 function pintar(){
   if(!INFO)return vistaEntrada();
   if(!V)return vistaEspera();
+  const sucesos=sucesosPendientes();
   if(V.fase==="finReparto"||V.fase==="finPartida")vistaFin();
-  else { vistaMesa(); vuelos(); }
-  anuncios();
+  else { vistaMesa(); vuelos(sucesos); }
+  anuncios(sucesos);
   aviso="";
 }
 
