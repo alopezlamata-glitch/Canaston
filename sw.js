@@ -1,9 +1,11 @@
-/* Service worker mínimo: no hay partida sin conexión (necesita el
-   WebSocket), así que aquí solo se cachea la cáscara de la app para
-   que abrir el icono desde la pantalla de inicio sea instantáneo. */
+/* Service worker mínimo: la partida online no funciona sin conexión
+   (necesita el WebSocket), pero "Jugar en un dispositivo" sí es un
+   juego completo sin servidor, así que aquí se cachea toda la cáscara
+   de la app -incluido canaston.html- para que funcione de verdad sin
+   conexión y para que abrir el icono sea instantáneo. */
 "use strict";
-const CACHE = "canaston-v1";           // subir el número si cambian mucho los estáticos
-const CASCARA = ["/", "/sala.html", "/motor.js", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE = "canaston-v2";           // subir el número si cambian mucho los estáticos
+const CASCARA = ["/", "/sala.html", "/canaston.html", "/motor.js", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CASCARA)));
