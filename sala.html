@@ -470,7 +470,9 @@ function vistaEspera(){
       <b>${j?esc(j.nombre):"—"}</b><span class="meta">asiento ${i+1}${j&&!j.conectado?" · desconectado":""}</span></div><br>`).join("")}
     <div class="campo" style="margin-top:22px"><label>Enlace de invitación</label>
       <input readonly value="${esc(enlace)}" onclick="this.select()"></div>
-    <button class="btn" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>
+    ${navigator.share?`<button class="btn" onclick="compartir('${esc(enlace)}')">Compartir</button>
+    <button class="btn ghost" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>`
+      :`<button class="btn" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>`}
     ${copiado?`<span class="chip-ok">✓ copiado</span>`:""}
     <p style="margin-top:26px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
       onclick="abandonar()">Salir de la sala</button></p>
@@ -484,6 +486,9 @@ function copiar(t){
       copiadoTimer=setTimeout(()=>{copiado=false;pintar();},1600);
     })
     .catch(()=>{avisar("Cópialo a mano desde el recuadro",true);pintar();});
+}
+function compartir(t){
+  navigator.share({title:"Canastón", text:"Únete a mi partida de Canastón", url:t}).catch(()=>{});
 }
 
 /* ── cartas ── */
