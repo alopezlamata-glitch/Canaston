@@ -473,7 +473,7 @@ function vistaMesa(){
         const cartas=V.jugadores.filter(j=>j.asiento!==V.asiento&&perteneceA(j,g)).reduce((t,j)=>t+j.cartas,0);
         const pumba=V.jugadores.some(j=>perteneceA(j,g)&&j.pumba);
         const o=juegosDe(g,false);
-        return `<div class="asiento">
+        return `<div class="asiento" data-grupo="${g.id}">
           <div class="abanico">${abanico(cartas)}</div>
           <div class="placa${g.id===(quien&&grupoDeAsiento(quien.asiento))?" activo":""}">
             <b>${esc(g.nombre)}</b><span class="p">${g.puntos.toLocaleString("es")}</span>
@@ -619,6 +619,95 @@ function soltar(txt,tipo){
   setTimeout(()=>el.remove(),1700);
 }
 
+/* ── vuelos de cartas: robar y coger el pozo no son un gesto tuyo (los
+   arrastres sí lo son, esos ya se ven al moverlos), así que hace falta
+   animar la carta apareciendo. Del rival nunca se sabe qué carta es. ── */
+function rectDe(sel){
+  const el=document.querySelector(sel);
+  return el?el.getBoundingClientRect():null;
+}
+function destinoDeRoba(s){
+  if(s.asiento===V.asiento){
+    const k=s.carta?(esJoker(s.carta)?0:s.carta.rango):null;
+    if(k!=null){
+      const el=document.querySelector('.mano .monton[data-rango="'+k+'"]');
+      if(el)return el;
+    }
+    return document.querySelector(".mano");
+  }
+  const gid=grupoDeAsiento(s.asiento);
+  return document.querySelector('.asiento[data-grupo="'+gid+'"] .abanico');
+}
+function destinoDeFlor(){
+  const quien=V.jugadores.find(j=>j.turno);
+  if(!quien)return null;
+  const gid=grupoDeAsiento(quien.asiento);
+  return gid===V.miGrupo
+    ? document.querySelector(".zonaJuegos .lateral .cerrada.flor")
+    : document.querySelector('.asiento[data-grupo="'+gid+'"] .susjuegos .cerrada.flor');
+}
+function destinoDePozo(s){
+  if(s.asiento===V.asiento)return document.querySelector(".mano");
+  const gid=grupoDeAsiento(s.asiento);
+  return document.querySelector('.asiento[data-grupo="'+gid+'"] .abanico');
+}
+function unVuelo(html,r0,r1,retraso,dur,alAterrizar){
+  const el=document.createElement("div");
+  el.className="vuelo";
+  el.style.cssText="left:"+r0.left+"px;top:"+r0.top+"px;width:"+r0.width+"px;height:"+r0.height+"px";
+  el.innerHTML=html;
+  document.body.appendChild(el);
+  const escala=Math.max(.4,Math.min(1,r1.width/r0.width));
+  const fin=()=>{el.remove();alAterrizar&&alAterrizar();};
+  if(!el.animate){setTimeout(fin,retraso+dur);return;}
+  const an=el.animate([
+    {transform:"translate(0,0) scale(1) rotate(0deg)",opacity:1,offset:0},
+    {transform:"translate("+((r1.left-r0.left)*.55)+"px,"+((r1.top-r0.top)*.42)+"px) scale("+
+       ((1+escala)/2*1.08)+") rotate(-4deg)",opacity:1,offset:.55},
+    {transform:"translate("+(r1.left-r0.left)+"px,"+(r1.top-r0.top)+"px) scale("+escala+") rotate(0deg)",
+       opacity:1,offset:1}
+  ],{duration:dur,delay:retraso,easing:"cubic-bezier(.3,.7,.25,1)",fill:"both"});
+  an.onfinish=fin;
+  setTimeout(fin,retraso+dur+400);           // red de seguridad
+}
+function vuelos(){
+  if(!V||!V.sucesos||!V.sucesos.length)return;
+  const robas=V.sucesos.filter(s=>s.tipo==="roba");
+  const flor=V.sucesos.find(s=>s.tipo==="flor");
+  const cogePozo=V.sucesos.find(s=>s.tipo==="cogePozo");
+  if(!robas.length&&!flor&&!cogePozo)return;
+  const origenTaco=rectDe('[data-drop="taco"] .stack');
+  const origenPozo=rectDe('[data-drop="pozo"] .stack');
+  const pendientes=new Map();
+  const ocultar=el=>{if(!el)return;pendientes.set(el,(pendientes.get(el)||0)+1);el.style.visibility="hidden";};
+  const revelar=el=>{if(!el)return;const n=(pendientes.get(el)||1)-1;pendientes.set(el,n);if(n<=0)el.style.visibility="";};
+  let i=0;
+  const paso=110,dur=460;
+  robas.slice(0,4).forEach(s=>{
+    const el=destinoDeRoba(s), r0=s.desde==="pozo"?origenPozo:origenTaco;
+    if(!el||!r0)return;
+    const r1=el.getBoundingClientRect();
+    ocultar(el);
+    unVuelo(s.carta?htmlCarta(s.carta):htmlDorso(""),r0,r1,(i++)*paso,dur,()=>revelar(el));
+  });
+  if(flor){
+    const el=destinoDeFlor(), r0=flor.desde==="pozo"?origenPozo:origenTaco;
+    if(el&&r0){
+      const r1=el.getBoundingClientRect();
+      ocultar(el);
+      unVuelo(htmlDorso(""),r0,r1,(i++)*paso,dur,()=>revelar(el));
+    }
+  }
+  if(cogePozo){
+    const el=destinoDePozo(cogePozo);
+    if(el&&origenPozo){
+      const r1=el.getBoundingClientRect();
+      ocultar(el);
+      unVuelo(htmlDorso(""),origenPozo,r1,(i++)*paso,dur,()=>revelar(el));
+    }
+  }
+}
+
 /* ── interacción ── */
 function grupoShim(){
   const g=V.grupos[V.miGrupo];
@@ -711,7 +800,7 @@ function pintar(){
   if(!INFO)return vistaEntrada();
   if(!V)return vistaEspera();
   if(V.fase==="finReparto"||V.fase==="finPartida")vistaFin();
-  else vistaMesa();
+  else { vistaMesa(); vuelos(); }
   anuncios();
   aviso="";
 }

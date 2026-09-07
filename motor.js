@@ -543,6 +543,21 @@ function aplicar(e, asiento, accion){
   return err ? {ok:false, error:err} : {ok:true, sucesos:e.sucesos.slice()};
 }
 
+/* ── sucesos recortados: para animar en el cliente sin filtrar cartas
+   ajenas. "roba" solo lleva la carta si el que robó eres tú; "flor" no
+   la lleva nunca, porque tampoco aparece en ninguna mano. ── */
+function redactarSucesos(sucesos, asiento){
+  return sucesos.map(s => {
+    if (s.tipo === "roba" && s.asiento !== asiento){
+      const {carta, ...resto} = s; return resto;
+    }
+    if (s.tipo === "flor"){
+      const {carta, ...resto} = s; return resto;
+    }
+    return s;
+  });
+}
+
 /* ── vista recortada: lo único que se manda a cada jugador ──
    De los rivales solo va el número de cartas. Del taco, solo cuántas
    quedan. Las tapadas del pozo van como cantidad, nunca como cartas. */
@@ -597,7 +612,7 @@ function vistaPara(e, asiento){
     fin: e.fase === "finReparto" || e.fase === "finPartida"
       ? {motivo: e.motivoFin, ganador: e.ganador, resultados: e.resultados}
       : null,
-    sucesos: e.sucesos.slice()
+    sucesos: redactarSucesos(e.sucesos, asiento)
   };
 }
 
