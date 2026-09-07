@@ -450,7 +450,7 @@ function abandonar(){
 }
 
 /* ── vestíbulo ── */
-let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:false};
+let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:true};
 let pantallaInicial = "inicio", salasPublicas = [], pollingSalas = null;
 
 /* ── portada ── */
@@ -491,8 +491,8 @@ function vistaEntrada(){
       <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfg.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
     <div class="campo"><label>Quién puede verla</label>
       <div class="seg">
-        <button aria-pressed="${!cfg.publica}" onclick="setPublica(false)">Privada</button>
         <button aria-pressed="${cfg.publica}" onclick="setPublica(true)">Pública</button>
+        <button aria-pressed="${!cfg.publica}" onclick="setPublica(false)">Privada</button>
       </div>
       <p class="meta" style="margin-top:7px">${cfg.publica
         ? "Cualquiera puede verla y unirse, sin enlace."
