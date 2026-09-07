@@ -1339,7 +1339,7 @@ function tocarZona(e){
   if(!G.sel)return;
   const el=e.currentTarget,t=el.dataset.drop;
   if(!el.classList.contains("acepta"))return;
-  e.stopPropagation();
+  e.stopImmediatePropagation();   // si la misma casilla también tiene data-exp, que no se abra el detalle
   if(t==="pozo")descartar(G.sel);
   else if(t==="juego")aJuego(G.sel,+el.dataset.i);
   else if(t==="nuevo")aJuego(G.sel,"nuevo");

@@ -991,7 +991,7 @@ function tocarZona(e){
   if(sel==null)return;
   const el=e.currentTarget;
   if(!el.classList.contains("acepta"))return;
-  e.stopPropagation();
+  e.stopImmediatePropagation();   // si la misma casilla también tiene data-exp, que no se abra el detalle
   soltarEn(el.dataset.drop, el.dataset.i, sel);
 }
 function soltarEn(t,i,id){
