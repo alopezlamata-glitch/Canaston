@@ -257,6 +257,10 @@ body{
 }
 #aviso.salida{border-left-color:var(--oro);color:var(--oro)}
 #aviso.err{border-left-color:var(--rojo);color:#eab9b1}
+#aviso.turno-tuyo{border-left-color:var(--oro);color:var(--oro);background:rgba(216,178,90,.12);
+  font-weight:600;letter-spacing:.01em}
+#aviso.turno-tuyo .punto{display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--oro);margin-right:6px;vertical-align:middle;animation:puntito 1.4s ease-in-out infinite}
 #capa.pregunta{display:flex;align-items:center;justify-content:center}
 .cuadro{
   background:linear-gradient(#26332b,#1b241e);border:1px solid var(--linea);
@@ -582,7 +586,9 @@ function vistaMesa(){
       ${aviso?`<span id="aviso" class="${errado?"err":""}">${esc(aviso)}</span>`
        :(!mio.abierto&&miTurno&&V.yo.puntosDelTurno>0
          ?`<span id="aviso" class="salida">salida ${V.yo.puntosDelTurno}/${mio.minimo}</span>`
-         :(!miTurno?`<span id="aviso">turno de ${esc(quien?quien.nombre:"")}</span>`:""))}
+         :(miTurno
+           ?`<span id="aviso" class="turno-tuyo"><i class="punto"></i>Tu turno</span>`
+           :`<span id="aviso">turno de ${esc(quien?quien.nombre:"")}</span>`))}
     </div>
 
     <div class="banda mimano" data-drop="mano">
