@@ -1,6 +1,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Canastón</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#2c4634">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Canastón">
 <style>
 :root{
   --fieltro-1:#3a5b45; --fieltro-2:#2c4634; --fieltro-3:#1d3024; --fieltro-4:#131f18;
@@ -372,6 +380,8 @@ td.n{text-align:right;font-family:var(--display);font-size:16px}
 /* Cliente de canastón online. No tiene reglas propias: dibuja lo que
    manda el servidor y le devuelve acciones. Usa Motor solo para saber
    dónde cabe una carta y así iluminar destinos sin preguntar. */
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
 const app = document.getElementById("app");
 const esc = s => String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
