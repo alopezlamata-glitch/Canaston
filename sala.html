@@ -321,6 +321,18 @@ body{
   background:radial-gradient(ellipse 90% 50% at 50% 30%,var(--fieltro-2),var(--fieltro-4));
   animation:entraPantalla .38s cubic-bezier(.2,.8,.3,1) both;
 }
+.portada{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.titulo-grande{
+  font:600 46px/1.08 var(--display);margin-bottom:40px;
+  animation:tituloEntra .7s cubic-bezier(.2,.8,.3,1) both;
+}
+.titulo-grande span{display:block;color:var(--oro);font-size:.48em;font-weight:600;
+  letter-spacing:.03em;margin-top:10px}
+@keyframes tituloEntra{
+  from{opacity:0;transform:scale(.88) translateY(10px)}
+  to{opacity:1;transform:none}
+}
+.portada-botones{display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px}
 @keyframes entraPantalla{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 h1{font:600 34px/1.1 var(--display);margin-bottom:5px}
 h2{font:600 20px var(--display)}
@@ -436,10 +448,31 @@ function abandonar(){
 
 /* ── vestíbulo ── */
 let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:false};
-let pantallaInicial = "entrada", salasPublicas = [], pollingSalas = null;
+let pantallaInicial = "inicio", salasPublicas = [], pollingSalas = null;
+
+/* ── portada ── */
+function vistaInicio(){
+  app.innerHTML = `<div class="pantalla portada">
+    <h1 class="titulo-grande">Canastón<span>de Mamen</span></h1>
+    <div class="portada-botones">
+      <button class="btn fila-entra" style="animation-delay:.25s" onclick="irCrear()">Crear sala</button>
+      <button class="btn ghost fila-entra" style="animation-delay:.38s" onclick="irPublicas()">Unirse a una sala pública</button>
+    </div>
+  </div>`;
+}
+function irCrear(){ pantallaInicial = "crear"; pintar(); }
+function irPublicas(){ verPublicas(); }
+function volverInicio(){
+  pantallaInicial = "inicio";
+  clearInterval(pollingSalas); pollingSalas = null;
+  pintar();
+}
+
 function vistaEntrada(){
   const invitado = new URLSearchParams(location.search).get("sala");
   app.innerHTML = `<div class="pantalla">
+    ${invitado ? "" : `<button class="btn ghost" style="font-size:12.5px;padding:7px 12px;margin-bottom:18px"
+      onclick="volverInicio()">← Volver</button>`}
     <h1>Canastón</h1>
     <p class="meta" style="margin-bottom:24px">${invitado ? "Te han invitado a la sala "+esc(invitado) : "Crea una sala y comparte el enlace"}</p>
     <div class="campo"><label>Tu nombre</label>
@@ -488,15 +521,10 @@ function verPublicas(){
   pollingSalas = setInterval(() => envio({tipo:"listar"}), 4000);
   pintar();
 }
-function volverEntrada(){
-  pantallaInicial = "entrada";
-  clearInterval(pollingSalas); pollingSalas = null;
-  pintar();
-}
 function vistaSalasPublicas(){
   app.innerHTML = `<div class="pantalla">
     <button class="btn ghost" style="font-size:12.5px;padding:7px 12px;margin-bottom:18px"
-      onclick="volverEntrada()">← Volver</button>
+      onclick="volverInicio()">← Volver</button>
     <h1>Salas públicas</h1>
     <p class="meta" style="margin-bottom:20px">Únete directamente, sin enlace</p>
     <div class="campo"><label>Tu nombre</label>
@@ -835,40 +863,66 @@ function unVuelo(html,r0,r1,retraso,dur,alAterrizar){
   an.onfinish=fin;
   setTimeout(fin,retraso+dur+400);           // red de seguridad
 }
+// la flor es un momento especial: la carta crece de camino al centro del
+// tablero antes de encogerse hasta las flores, en vez del vuelo normal.
+function unVueloFlor(html,r0,r1,retraso,dur,alAterrizar){
+  const el=document.createElement("div");
+  el.className="vuelo";
+  el.style.cssText="left:"+r0.left+"px;top:"+r0.top+"px;width:"+r0.width+"px;height:"+r0.height+"px;z-index:250";
+  el.innerHTML=html;
+  document.body.appendChild(el);
+  const centroX=window.innerWidth/2, centroY=window.innerHeight*.42;
+  const dxCentro=centroX-(r0.left+r0.width/2), dyCentro=centroY-(r0.top+r0.height/2);
+  const dxFin=r1.left-r0.left, dyFin=r1.top-r0.top;
+  const escala=Math.max(.4,Math.min(1,r1.width/r0.width));
+  const fin=()=>{el.remove();alAterrizar&&alAterrizar();};
+  if(!el.animate){setTimeout(fin,retraso+dur);return;}
+  const an=el.animate([
+    {transform:"translate(0,0) scale(1) rotate(0deg)",opacity:1,offset:0},
+    {transform:"translate("+dxCentro+"px,"+dyCentro+"px) scale(2.3) rotate(-6deg)",opacity:1,offset:.5},
+    {transform:"translate("+dxFin+"px,"+dyFin+"px) scale("+escala+") rotate(0deg)",opacity:1,offset:1}
+  ],{duration:dur,delay:retraso,easing:"cubic-bezier(.25,.65,.3,1)",fill:"both"});
+  an.onfinish=fin;
+  setTimeout(fin,retraso+dur+400);           // red de seguridad
+}
 function vuelos(sucesos){
   if(!sucesos.length)return;
   const robas=sucesos.filter(s=>s.tipo==="roba");
-  const flor=sucesos.find(s=>s.tipo==="flor");
+  const flores=sucesos.filter(s=>s.tipo==="flor");
   const cogePozo=sucesos.find(s=>s.tipo==="cogePozo");
-  if(!robas.length&&!flor&&!cogePozo)return;
+  if(!robas.length&&!flores.length&&!cogePozo)return;
   const origenTaco=rectDe('[data-drop="taco"] .stack');
   const origenPozo=rectDe('[data-drop="pozo"] .stack');
   const pendientes=new Map();
   const ocultar=el=>{if(!el)return;pendientes.set(el,(pendientes.get(el)||0)+1);el.style.visibility="hidden";};
   const revelar=el=>{if(!el)return;const n=(pendientes.get(el)||1)-1;pendientes.set(el,n);if(n<=0)el.style.visibility="";};
-  let i=0;
-  const paso=110,dur=460;
+  const paso=110,dur=460, durFlor=760, pausaTrasFlor=1000;
+  let cursor=0;
+  // la(s) flor(es) vuelan primero, en grande; el resto de cartas esperan
+  // a que termine ese momento antes de aparecer.
+  flores.forEach(s=>{
+    const el=destinoDeFlor(), r0=s.desde==="pozo"?origenPozo:origenTaco;
+    if(!el||!r0)return;
+    const r1=el.getBoundingClientRect();
+    ocultar(el);
+    unVueloFlor(htmlDorso(""),r0,r1,cursor,durFlor,()=>revelar(el));
+    cursor+=durFlor+pausaTrasFlor;
+  });
   robas.slice(0,4).forEach(s=>{
     const el=destinoDeRoba(s), r0=s.desde==="pozo"?origenPozo:origenTaco;
     if(!el||!r0)return;
     const r1=el.getBoundingClientRect();
     ocultar(el);
-    unVuelo(s.carta?htmlCarta(s.carta):htmlDorso(""),r0,r1,(i++)*paso,dur,()=>revelar(el));
+    unVuelo(s.carta?htmlCarta(s.carta):htmlDorso(""),r0,r1,cursor,dur,()=>revelar(el));
+    cursor+=paso;
   });
-  if(flor){
-    const el=destinoDeFlor(), r0=flor.desde==="pozo"?origenPozo:origenTaco;
-    if(el&&r0){
-      const r1=el.getBoundingClientRect();
-      ocultar(el);
-      unVuelo(htmlDorso(""),r0,r1,(i++)*paso,dur,()=>revelar(el));
-    }
-  }
   if(cogePozo){
     const el=destinoDePozo(cogePozo);
     if(el&&origenPozo){
       const r1=el.getBoundingClientRect();
       ocultar(el);
-      unVuelo(htmlDorso(""),origenPozo,r1,(i++)*paso,dur,()=>revelar(el));
+      unVuelo(htmlDorso(""),origenPozo,r1,cursor,dur,()=>revelar(el));
+      cursor+=paso;
     }
   }
 }
@@ -971,7 +1025,12 @@ function sucesosPendientes(){
   return V.sucesos;
 }
 function pintar(){
-  if(!INFO)return pantallaInicial==="publicas" ? vistaSalasPublicas() : vistaEntrada();
+  if(!INFO){
+    if (new URLSearchParams(location.search).get("sala")) return vistaEntrada();
+    if (pantallaInicial === "publicas") return vistaSalasPublicas();
+    if (pantallaInicial === "crear") return vistaEntrada();
+    return vistaInicio();
+  }
   if(!V)return vistaEspera();
   const sucesos=sucesosPendientes();
   if(V.fase==="finReparto"||V.fase==="finPartida")vistaFin();
