@@ -80,11 +80,10 @@ function cabe(clave, cs, carta, g){
   if (clave === "M") return t.every(esMono) && t.length <= 7;
   if (clave === 3)   return t.every(esTresNegro);
   if (!t.every(c => esMono(c) || c.rango === clave)) return false;
-  if (monos(t) > 3) return false;
-  if (cs.length < 7) return true;
-  if (monos(cs) > 0) return true;                       // sucia: crece sin tope
-  if (!esMono(carta) || !g) return false;               // limpia: solo se ensucia
-  return g.combis.filter(c => cuentaComoLimpia(c,g)).length > 1;
+  // la limpieza de una canasta se sella la primera vez que llega a 7 cartas
+  // y ya no cambia después (ver cuentaComoLimpia), así que no hay motivo
+  // para dejar de admitir cartas de esa pinta una vez cerrada.
+  return monos(t) <= 3;
 }
 function limpiaAlCerrar(c, g){
   if (c.clave === "M") return true;
