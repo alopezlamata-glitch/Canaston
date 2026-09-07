@@ -544,14 +544,13 @@ function aplicar(e, asiento, accion){
 }
 
 /* ── sucesos recortados: para animar en el cliente sin filtrar cartas
-   ajenas. "roba" solo lleva la carta si el que robó eres tú; "flor" no
-   la lleva nunca, porque tampoco aparece en ninguna mano. ── */
+   ajenas. "roba" solo lleva la carta si el que robó eres tú, porque
+   entra en tu mano. "flor" sí lleva la carta siempre: una flor no
+   entra en ninguna mano, se enseña a todos igual que en una mesa
+   real. ── */
 function redactarSucesos(sucesos, asiento){
   return sucesos.map(s => {
     if (s.tipo === "roba" && s.asiento !== asiento){
-      const {carta, ...resto} = s; return resto;
-    }
-    if (s.tipo === "flor"){
       const {carta, ...resto} = s; return resto;
     }
     return s;

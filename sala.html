@@ -246,6 +246,9 @@ body{
   transition-property:transform,opacity;transition-timing-function:cubic-bezier(.2,.75,.3,1);
   filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));
 }
+.vuelo-girador{position:relative;width:100%;height:100%;transform-style:preserve-3d}
+.vuelo-cara{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.vuelo-cara.frente{transform:rotateY(180deg)}
 #fantasma{
   position:fixed;z-index:99;pointer-events:none;
   transform:translate(-50%,-64%) rotate(-5deg) scale(1.16);
@@ -863,26 +866,37 @@ function unVuelo(html,r0,r1,retraso,dur,alAterrizar){
   an.onfinish=fin;
   setTimeout(fin,retraso+dur+400);           // red de seguridad
 }
-// la flor es un momento especial: la carta crece de camino al centro del
-// tablero antes de encogerse hasta las flores, en vez del vuelo normal.
-function unVueloFlor(html,r0,r1,retraso,dur,alAterrizar){
+// la flor es un momento especial: sale boca abajo, crece de camino al
+// centro del tablero, se gira ahí mismo para enseñar la cara (todos la
+// ven, no es secreta) y sigue encogiéndose hasta las flores.
+function unVueloFlor(dorsoHtml,fenteHtml,r0,r1,retraso,dur,alAterrizar){
   const el=document.createElement("div");
   el.className="vuelo";
-  el.style.cssText="left:"+r0.left+"px;top:"+r0.top+"px;width:"+r0.width+"px;height:"+r0.height+"px;z-index:250";
-  el.innerHTML=html;
+  el.style.cssText="left:"+r0.left+"px;top:"+r0.top+"px;width:"+r0.width+"px;height:"+r0.height+"px;"+
+    "z-index:250;perspective:600px";
+  el.innerHTML=`<div class="vuelo-girador">
+    <div class="vuelo-cara">${dorsoHtml}</div>
+    <div class="vuelo-cara frente">${fenteHtml}</div>
+  </div>`;
   document.body.appendChild(el);
+  const girador=el.querySelector(".vuelo-girador");
   const centroX=window.innerWidth/2, centroY=window.innerHeight*.42;
   const dxCentro=centroX-(r0.left+r0.width/2), dyCentro=centroY-(r0.top+r0.height/2);
   const dxFin=r1.left-r0.left, dyFin=r1.top-r0.top;
   const escala=Math.max(.4,Math.min(1,r1.width/r0.width));
   const fin=()=>{el.remove();alAterrizar&&alAterrizar();};
   if(!el.animate){setTimeout(fin,retraso+dur);return;}
-  const an=el.animate([
+  el.animate([
     {transform:"translate(0,0) scale(1) rotate(0deg)",opacity:1,offset:0},
     {transform:"translate("+dxCentro+"px,"+dyCentro+"px) scale(2.3) rotate(-6deg)",opacity:1,offset:.5},
     {transform:"translate("+dxFin+"px,"+dyFin+"px) scale("+escala+") rotate(0deg)",opacity:1,offset:1}
   ],{duration:dur,delay:retraso,easing:"cubic-bezier(.25,.65,.3,1)",fill:"both"});
-  an.onfinish=fin;
+  const giro=girador.animate([
+    {transform:"rotateY(0deg)",offset:0},
+    {transform:"rotateY(90deg)",offset:.5},
+    {transform:"rotateY(180deg)",offset:1}
+  ],{duration:dur,delay:retraso,easing:"cubic-bezier(.25,.65,.3,1)",fill:"both"});
+  giro.onfinish=fin;
   setTimeout(fin,retraso+dur+400);           // red de seguridad
 }
 function vuelos(sucesos){
@@ -905,7 +919,7 @@ function vuelos(sucesos){
     if(!el||!r0)return;
     const r1=el.getBoundingClientRect();
     ocultar(el);
-    unVueloFlor(htmlDorso(""),r0,r1,cursor,durFlor,()=>revelar(el));
+    unVueloFlor(htmlDorso(""),s.carta?htmlCarta(s.carta):htmlDorso(""),r0,r1,cursor,durFlor,()=>revelar(el));
     cursor+=durFlor+pausaTrasFlor;
   });
   robas.slice(0,4).forEach(s=>{
