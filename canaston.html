@@ -233,7 +233,9 @@ body{
   position:fixed;z-index:99;pointer-events:none;
   transform:translate(-50%,-64%) rotate(-5deg) scale(1.16);
   filter:drop-shadow(0 12px 16px rgba(0,0,0,.6));
+  animation:levanta .14s cubic-bezier(.2,.8,.3,1) both;
 }
+@keyframes levanta{from{transform:translate(-50%,-64%) rotate(-5deg) scale(1)}}
 
 /* ══════ avisos y capas ══════ */
 .mensajera{
@@ -252,7 +254,10 @@ body{
   background:linear-gradient(#26332b,#1b241e);border:1px solid var(--linea);
   border-radius:12px;padding:22px 20px;max-width:340px;width:100%;text-align:center;
   box-shadow:0 18px 40px rgba(0,0,0,.6);
+  animation:entraModal .22s cubic-bezier(.2,.8,.3,1) both;
 }
+@keyframes entraModal{from{opacity:0;transform:scale(.92) translateY(6px)}to{opacity:1;transform:none}}
+@keyframes entraFondo{from{opacity:0}to{opacity:1}}
 .previa{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:20px}
 .previa .mas{font:600 20px var(--display);color:var(--apag)}
 .previa .interro{
@@ -269,8 +274,9 @@ body{
   background:transparent;border:1px solid var(--linea);border-radius:9px;
   padding:10px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;
   cursor:pointer;color:var(--hueso);
+  transition:transform .12s ease,border-color .12s ease,background .12s ease;
 }
-.op:active{border-color:var(--oro);background:rgba(216,178,90,.14)}
+.op:active{border-color:var(--oro);background:rgba(216,178,90,.14);transform:scale(.94)}
 .anuncio{
   position:fixed;left:50%;top:44%;z-index:300;pointer-events:none;
   transform:translate(-50%,-50%);
@@ -284,34 +290,67 @@ body{
 #capa{
   position:fixed;inset:0;z-index:80;background:rgba(10,15,11,.9);
   padding:26px 16px;overflow-y:auto;
+  animation:entraFondo .18s ease both;
 }
 
 /* ══════ pantallas ══════ */
 .pantalla{
   height:100dvh;overflow-y:auto;padding:26px 22px 40px;max-width:520px;margin:0 auto;
   background:radial-gradient(ellipse 90% 50% at 50% 30%,var(--fieltro-2),var(--fieltro-4));
+  animation:entraPantalla .38s cubic-bezier(.2,.8,.3,1) both;
 }
+@keyframes entraPantalla{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 h1{font:600 34px/1.1 var(--display);margin-bottom:5px}
 h2{font:600 20px var(--display)}
 .btn{background:linear-gradient(#e6c470,#c39c40);color:#2b2210;border:none;
      padding:13px 20px;border-radius:6px;font:600 15px var(--sans);cursor:pointer;
-     box-shadow:0 2px 6px rgba(0,0,0,.35)}
+     box-shadow:0 2px 6px rgba(0,0,0,.35);
+     transition:transform .12s ease,box-shadow .12s ease,filter .12s ease}
+.btn:active{transform:scale(.95);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+@media(hover:hover){.btn:hover{filter:brightness(1.07)}}
 .btn.claro{background:var(--hueso);color:var(--tinta)}
 .btn.ghost{background:transparent;color:var(--apag);border:1px solid var(--linea);box-shadow:none}
+.btn.ghost:active{background:rgba(246,242,232,.08)}
+.btn:disabled{filter:grayscale(.6) brightness(.75);cursor:default;transform:none!important}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{background:rgba(0,0,0,.2);border:1px solid var(--linea);color:var(--hueso);
-  padding:9px 15px;border-radius:6px;font:15px var(--sans);cursor:pointer}
-.seg button[aria-pressed=true]{background:var(--hueso);color:var(--tinta);border-color:var(--hueso)}
+  padding:9px 15px;border-radius:6px;font:15px var(--sans);cursor:pointer;
+  transition:background .15s ease,color .15s ease,border-color .15s ease,transform .12s ease}
+.seg button:active{transform:scale(.94)}
+.seg button[aria-pressed=true]{background:var(--hueso);color:var(--tinta);border-color:var(--hueso);
+  box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .campo{margin-bottom:17px}
 label{display:block;font-size:12px;color:var(--apag);margin-bottom:6px}
 input{font:16px var(--sans);padding:10px;width:100%;background:rgba(0,0,0,.25);
-  color:var(--hueso);border:1px solid var(--linea);border-radius:6px;margin-bottom:6px}
+  color:var(--hueso);border:1px solid var(--linea);border-radius:6px;margin-bottom:6px;
+  transition:border-color .15s ease}
+input:focus{border-color:var(--oro)}
 table{width:100%;border-collapse:collapse;font-size:14px}
 td,th{padding:6px 2px;text-align:left;border-bottom:1px solid var(--linea);font-weight:400}
 th{font-weight:600}
 td.n{text-align:right;font-family:var(--display);font-size:16px}
 .gordo{font:34px var(--display);color:var(--oro);line-height:1}
 :focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+.carta[data-src]{transition:transform .1s ease}
+.carta[data-src]:active{transform:scale(.94)}
+.carta.sel{transition:transform .15s cubic-bezier(.25,.9,.4,1)}
+
+/* ══════ toques finos de menú ══════ */
+.puntitos{display:inline-flex;gap:4px;vertical-align:middle;margin-left:2px}
+.puntitos i{width:5px;height:5px;border-radius:50%;background:var(--oro);
+  animation:puntito 1.1s ease-in-out infinite;font-style:normal}
+.puntitos i:nth-child(2){animation-delay:.15s}
+.puntitos i:nth-child(3){animation-delay:.3s}
+@keyframes puntito{0%,80%,100%{opacity:.25;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+.fila-entra{animation:filaEntra .32s cubic-bezier(.2,.8,.3,1) both}
+@keyframes filaEntra{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.chip-ok{display:inline-flex;align-items:center;gap:5px;color:var(--oro);
+  font-size:12px;margin-left:8px;animation:chipEntra .25s ease both}
+@keyframes chipEntra{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.resultado{animation:filaEntra .38s cubic-bezier(.2,.8,.3,1) both}
+.resultado.ganador{box-shadow:inset 0 0 0 1px var(--oro-hondo);border-radius:10px;
+  background:rgba(216,178,90,.06)}
+.codigo-sala{font-weight:700;letter-spacing:.12em;color:var(--oro)}
 </style>
 <body>
 <div id="app"></div>
@@ -1061,7 +1100,8 @@ function capaRival(){
 }
 function vistaTraspaso(){
   const j=G.jugadores[G.turno];
-  app.innerHTML=`<div class="pantalla" style="display:flex;flex-direction:column;justify-content:center;text-align:center">
+  app.innerHTML=`<div class="pantalla" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+    <div style="margin-bottom:22px">${htmlDorso("",'--w:74px;--h:104px')}</div>
     <h1>${esc(j.nombre)}</h1>
     <p class="meta" style="margin-bottom:28px">Pasa el dispositivo</p>
     <div><button class="btn" onclick="G.fase='turno';pintar()">Ver mis cartas</button></div>
@@ -1073,16 +1113,29 @@ function vistaFin(){
   app.innerHTML=`<div class="pantalla">
     <h1>${fin?esc(G.ganador.nombre)+" gana la partida":"Recuento"}</h1>
     <p class="meta" style="margin-bottom:18px">${esc(G.motivoCierre)} · se juega a ${G.cfg.objetivo.toLocaleString("es")}</p>
-    ${G.resultados.map(res=>`<div style="border-top:1px solid var(--linea);padding-top:13px;margin-top:17px">
+    ${G.resultados.map((res,i)=>`<div class="resultado${fin&&res.grupo===G.ganador?" ganador":""}"
+        style="border-top:1px solid var(--linea);padding:13px 10px 4px;margin-top:17px;animation-delay:${i*90}ms">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
         <h2>${esc(res.grupo.nombre)}</h2>
-        <span class="gordo">${res.total>=0?"+":""}${res.total.toLocaleString("es")}</span></div>
+        <span class="gordo" data-cuenta="${res.total}"${res.total>=0?' data-signo="+"':""}>0</span></div>
       <table style="margin-top:9px">
         ${res.det.map(d=>`<tr><td>${esc(d[0])}</td><td class="n">${d[1].toLocaleString("es")}</td></tr>`).join("")}
-        <tr><th>Acumulado</th><td class="n"><strong>${res.grupo.puntos.toLocaleString("es")}</strong></td></tr>
+        <tr><th>Acumulado</th><td class="n"><strong data-cuenta="${res.grupo.puntos}">0</strong></td></tr>
       </table></div>`).join("")}
     <div style="margin-top:26px">${fin?`<button class="btn" onclick="location.reload()">Nueva partida</button>`
       :`<button class="btn" onclick="siguienteMano()">Repartir de nuevo</button>`}</div></div>`;
+  contarResultados();
+}
+function contarResultados(){
+  document.querySelectorAll("[data-cuenta]").forEach(el=>{
+    const destino=parseInt(el.dataset.cuenta,10), signo=el.dataset.signo||"", dur=650, t0=performance.now();
+    const paso=ahora=>{
+      const p=Math.min(1,(ahora-t0)/dur), curva=1-Math.pow(1-p,3);
+      el.textContent=signo+Math.round(destino*curva).toLocaleString("es");
+      if(p<1)requestAnimationFrame(paso);
+    };
+    requestAnimationFrame(paso);
+  });
 }
 let cfgTmp={n:4,parejas:false,objetivo:10000,animacion:"siempre",nombres:["Jugador 1","Jugador 2","Jugador 3","Jugador 4"]};
 function vistaSetup(){
