@@ -138,6 +138,34 @@ wss.on("connection", ws => {
       if (!r.ok) ws.send(JSON.stringify({tipo:"rechazo", mensaje:r.error}));
       return difundir(sala);
     }
+
+    if (m.tipo === "salir"){
+      const sala = salas.get(ws.sala);
+      if (!sala) return;
+      const asiento = ws.asiento;
+      const a = sala.asientos[asiento];
+      const nombre = a ? a.nombre : "Alguien";
+      ws.sala = null; ws.asiento = null;
+
+      if (sala.estado){
+        // con la partida en marcha no se puede continuar sin ese jugador:
+        // se avisa a todos y se cierra la sala
+        sala.asientos.forEach(x => {
+          if (x && x.ws && x.ws.readyState === 1)
+            x.ws.send(JSON.stringify({
+              tipo: "salaCerrada",
+              motivo: x.ws === ws ? null : nombre + " ha abandonado la partida"
+            }));
+        });
+        return salas.delete(sala.id);
+      }
+
+      // en la sala de espera basta con liberar el asiento
+      sala.asientos[asiento] = null;
+      ws.send(JSON.stringify({tipo:"salaCerrada"}));
+      if (!sala.asientos.some(Boolean)) return salas.delete(sala.id);
+      return difundir(sala);
+    }
   });
 
   ws.on("close", () => {
