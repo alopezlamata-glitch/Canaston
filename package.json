@@ -1,0 +1,9 @@
+{
+  "name": "canaston",
+  "version": "1.0.0",
+  "description": "Canastón online",
+  "main": "servidor.js",
+  "scripts": { "start": "node servidor.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
+}

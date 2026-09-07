@@ -1,0 +1,1328 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Canastón</title>
+<style>
+:root{
+  --fieltro-1:#3a5b45; --fieltro-2:#2c4634; --fieltro-3:#1d3024; --fieltro-4:#131f18;
+  --madera:#2a1d14; --madera-luz:#3d2b1d;
+  --hueso:#f6f2e8; --apag:#b9b3a3; --tinta:#1b211c;
+  --rojo:#b03028; --oro:#d8b25a; --oro-hondo:#8a6d2c;
+  --linea:rgba(246,242,232,.14);
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{
+  background:var(--madera);
+  color:var(--hueso);font:15px/1.4 var(--sans);
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;
+}
+.meta{font-size:11.5px;color:var(--apag);letter-spacing:.01em}
+
+/* ══════ la mesa ══════ */
+#mesa{
+  --mw:52px;--mh:73px;   /* mano */
+  --jw:34px;--jh:48px;   /* escaleras */
+  --pw:56px;--ph:79px;   /* taco y pozo */
+  --tw:30px;--th:42px;   /* taquitos de canasta */
+  --aw:26px;--ah:37px;   /* dorsos del rival */
+  position:relative;height:100dvh;display:flex;flex-direction:column;
+  background:
+    radial-gradient(ellipse 96% 52% at 50% 44%,
+      var(--fieltro-1) 0%, var(--fieltro-2) 42%, var(--fieltro-3) 74%, var(--fieltro-4) 100%);
+  box-shadow:inset 0 0 0 5px var(--madera-luz), inset 0 0 34px rgba(0,0,0,.6);
+}
+#mesa::before{ /* grano del fieltro */
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.045;
+  background-image:
+    repeating-linear-gradient(37deg,#fff 0 1px,transparent 1px 3px),
+    repeating-linear-gradient(-53deg,#fff 0 1px,transparent 1px 3px);
+}
+#mesa.j2{--mw:62px;--mh:87px;--jw:40px;--jh:56px;--pw:66px;--ph:93px;--tw:34px;--th:48px;--aw:30px;--ah:42px}
+#mesa.j4{--mw:44px;--mh:62px;--jw:29px;--jh:41px;--pw:50px;--ph:70px;--tw:25px;--th:35px;--aw:22px;--ah:31px}
+.banda{position:relative;z-index:1;flex:0 0 auto}
+.tira{
+  display:flex;gap:7px;align-items:flex-end;overflow-x:auto;
+  padding:0 12px;scrollbar-width:none;
+}
+.tira::-webkit-scrollbar{display:none}
+
+/* ══════ cartas ══════ */
+.carta{
+  position:relative;flex:0 0 auto;
+  width:var(--w,52px);height:var(--h,73px);
+  background:linear-gradient(157deg,#fffdf8 0%,#f4eee0 62%,#e7dfcc 100%);
+  color:var(--tinta);border-radius:6px;
+  box-shadow:0 1px 1px rgba(0,0,0,.3),0 3px 7px rgba(0,0,0,.42);
+  font-family:var(--display);overflow:hidden;
+}
+.carta::after{ /* filo interior */
+  content:"";position:absolute;inset:0;border-radius:6px;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.75);
+}
+.carta .ix{
+  position:absolute;top:3px;left:4px;display:flex;flex-direction:column;
+  align-items:center;line-height:.94;font-weight:600;
+  font-size:calc(var(--w,52px)*.30);
+}
+.carta .ix .s{font-size:calc(var(--w,52px)*.24);margin-top:1px}
+.carta .pip{
+  position:absolute;right:5px;bottom:2px;
+  font-size:calc(var(--w,52px)*.52);line-height:1;opacity:.9;
+}
+.carta.roja{color:var(--rojo)}
+.carta.sel{transform:translateY(-13px);box-shadow:0 0 0 2px var(--oro),0 12px 18px rgba(0,0,0,.55)}
+.carta.nueva::after{box-shadow:inset 0 0 0 2px var(--oro)}
+.carta.tenue{opacity:.3}
+
+.dorso{
+  background:
+    repeating-linear-gradient(45deg,rgba(216,178,90,.16) 0 2px,transparent 2px 5px),
+    repeating-linear-gradient(-45deg,rgba(216,178,90,.16) 0 2px,transparent 2px 5px),
+    linear-gradient(158deg,#2f4a38,#1e3125);
+  color:var(--oro);
+}
+.dorso::after{box-shadow:inset 0 0 0 1px rgba(216,178,90,.3),inset 0 0 0 4px rgba(0,0,0,.18)}
+.dorso .cnt{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font:600 calc(var(--w,52px)*.30) var(--display);color:var(--oro);opacity:.92;
+}
+
+/* ══════ asiento del fondo (rivales) ══════ */
+.asientos{display:flex;gap:9px;padding:8px 10px 4px;align-items:flex-start;justify-content:center}
+.asiento{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.susjuegos{
+  display:flex;gap:5px;align-items:flex-start;width:100%;
+  overflow-x:auto;scrollbar-width:none;padding-bottom:2px;
+}
+.susjuegos::-webkit-scrollbar{display:none}
+.susjuegos:empty{display:none}
+.abanico{display:flex;height:calc(var(--ah) - 4px);align-items:flex-start;justify-content:center}
+.abanico .carta{--w:var(--aw);--h:var(--ah);margin-left:calc(-1 * var(--aw) + 9px);transform-origin:bottom center}
+.abanico .carta:first-child{margin-left:0}
+.placa{
+  display:flex;align-items:center;gap:5px;white-space:nowrap;max-width:100%;
+  border:1px solid var(--linea);border-radius:16px;padding:3px 8px;
+  background:rgba(0,0,0,.26);font-size:12px;
+}
+.placa b{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pumbita{background:var(--oro);color:#2b2210;font:700 9.5px var(--sans);
+  border-radius:8px;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em}
+#mesa.j4 .placa{font-size:11px;padding:2px 7px;gap:4px}
+#mesa.j4 .placa .p{font-size:12px}
+.placa b{font-weight:600}
+.placa .p{font-family:var(--display);font-size:13.5px;color:var(--oro)}
+.placa.activo{border-color:var(--oro);box-shadow:0 0 0 1px rgba(216,178,90,.3)}
+
+/* ══════ juegos ══════ */
+.zonaJuegos{display:flex;align-items:stretch;gap:8px;padding:4px 10px;min-height:0}
+.lateral{
+  display:flex;flex-direction:column;gap:4px;flex:0 0 auto;
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+  padding-right:7px;border-right:1px solid var(--linea);
+}
+.lateral:empty{display:none}
+.lateral::-webkit-scrollbar{display:none}
+.lateral::-webkit-scrollbar{display:none}
+.cerrada{
+  display:flex;align-items:center;gap:5px;flex:0 0 auto;
+  padding:2px 6px 2px 3px;border-radius:7px;background:rgba(0,0,0,.2);
+  box-shadow:inset 0 0 0 1px var(--linea);
+}
+.lateral .taquito{width:calc(var(--tw) - 5px);height:calc(var(--th) - 7px)}
+.lateral .taquito>*{--w:calc(var(--tw) - 5px);--h:calc(var(--th) - 7px)}
+.cerrada .et{font:600 11px var(--sans);color:var(--apag);letter-spacing:.02em;line-height:1.3}
+.cerrada .et i{font:400 9.5px var(--sans);font-style:normal;opacity:.75}
+.cerrada.limpia{box-shadow:inset 0 0 0 1px var(--oro-hondo);background:rgba(216,178,90,.1)}
+.cerrada.limpia .et{color:var(--oro)}
+.cerrada.sucia .et{color:var(--apag)}
+.cerrada.flor .et{color:#d99a90}
+.taquito{position:relative;width:var(--tw);height:var(--th);flex:0 0 auto}
+.taquito>*{position:absolute;inset:0;--w:var(--tw);--h:var(--th)}
+.taquito .borde{background:linear-gradient(#f2ecdd,#ddd4bf)}
+.taquito .b1{transform:translate(1.5px,-1.5px) rotate(1.4deg)}
+.taquito .b2{transform:translate(3px,-3px) rotate(2.8deg)}
+.taquito .b3{transform:translate(4.5px,-4.5px) rotate(4.2deg)}
+.taquito .corona{z-index:3}
+
+/* escaleras en curso: cartas de arriba abajo, ocupan mucho menos de ancho */
+.tira.juegos{align-items:flex-start;gap:7px;padding:0}
+.juego{
+  flex:0 0 auto;border-radius:8px;padding:4px 5px 5px;
+  background:rgba(0,0,0,.18);box-shadow:inset 0 0 0 1px var(--linea);
+}
+.juego .tit{font-size:10px;color:var(--apag);margin-bottom:3px;text-align:center;white-space:nowrap}
+.juego .cs{display:flex;flex-direction:column;align-items:center}
+.juego .cs .carta{--w:var(--jw);--h:var(--jh);margin-top:calc(15px - var(--jh))}
+.juego .cs .carta:first-child{margin-top:0}
+.juego.mal{box-shadow:inset 0 0 0 1px var(--rojo)}
+.juego.mal .tit{color:#e08b7f}
+.hueco{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;text-align:center;
+  border:1px dashed var(--linea);border-radius:8px;
+  width:52px;min-height:60px;padding:5px;font-size:10px;color:var(--apag);line-height:1.25;
+}
+.rotulo{
+  flex:0 0 auto;align-self:center;writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:9.5px;color:var(--apag);letter-spacing:.06em;text-transform:lowercase;
+}
+.nada{align-self:center;color:var(--apag);font-size:11px;padding:6px 2px}
+
+/* ══════ río central ══════ */
+.rio{
+  flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:34px;
+  padding:4px 12px;
+}
+.pila{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.stack{position:relative;--w:var(--pw);--h:var(--ph);width:var(--w);height:var(--h);overflow:visible}
+.stack .cruzada{
+  box-shadow:0 2px 6px rgba(0,0,0,.5),0 0 0 1px rgba(216,178,90,.55);
+  z-index:1;                    /* enterrado: solo asoma por los lados */
+}
+.stack .cruzada.arriba{z-index:4}   /* salvo que sea la propia tapa */
+.stack .tapa{z-index:3}
+.pila{overflow:visible}
+.stack>.carta{position:absolute;inset:0;--w:var(--pw);--h:var(--ph)}
+.stack .z1{transform:translate(4px,4px)}
+.stack .z2{transform:translate(2px,2px)}
+.marca{
+  position:absolute;top:-9px;right:-11px;z-index:6;
+  background:linear-gradient(#e6c470,#c39c40);color:#2b2210;
+  font:700 11px var(--sans);border-radius:11px;padding:1px 7px;
+  box-shadow:0 2px 4px rgba(0,0,0,.4);
+}
+.pie{font-size:11px;color:var(--apag);text-align:center;max-width:120px;min-height:28px}
+
+/* ══════ mi mano ══════ */
+.mimano{
+  background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.4));
+  border-top:1px solid var(--linea);
+  padding:10px 0 calc(11px + env(safe-area-inset-bottom));
+}
+.mano{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;padding:0 10px}
+.monton{position:relative;isolation:isolate}
+.mano .carta{--w:var(--mw);--h:var(--mh)}
+.monton .prof{position:absolute;inset:0;z-index:0;filter:brightness(.9)}
+.monton .prof.a{transform:translate(4px,4px)}
+.monton .prof.b{transform:translate(2px,2px)}
+.monton .frente{position:relative;z-index:2}
+.badge{
+  position:absolute;bottom:-4px;right:-5px;z-index:6;
+  background:#16211a;color:var(--oro);border:1px solid var(--oro-hondo);
+  font:700 10.5px var(--sans);border-radius:9px;padding:0 5px;
+}
+
+/* ══════ objetivos ══════ */
+.acepta{box-shadow:inset 0 0 0 2px var(--oro),0 0 14px rgba(216,178,90,.28)!important}
+.hueco.acepta{border-color:var(--oro);border-style:solid;color:var(--oro)}
+.encima{background:rgba(216,178,90,.26)!important}
+.pila.acepta{box-shadow:none!important}
+.pila.acepta .stack::after{
+  content:"";position:absolute;inset:-8px;border:2px solid var(--oro);border-radius:11px;
+  box-shadow:0 0 16px rgba(216,178,90,.35);
+}
+.pila.encima .stack::after{background:rgba(216,178,90,.24)}
+.vuelo{
+  will-change:transform;
+  position:fixed;z-index:200;pointer-events:none;transform-origin:top left;
+  transition-property:transform,opacity;transition-timing-function:cubic-bezier(.2,.75,.3,1);
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));
+}
+#fantasma{
+  position:fixed;z-index:99;pointer-events:none;
+  transform:translate(-50%,-64%) rotate(-5deg) scale(1.16);
+  filter:drop-shadow(0 12px 16px rgba(0,0,0,.6));
+}
+
+/* ══════ avisos y capas ══════ */
+.mensajera{
+  display:flex;align-items:center;justify-content:center;
+  min-height:30px;padding:0 14px;
+}
+#aviso{
+  font-size:12.5px;text-align:center;color:var(--apag);
+  border-left:2px solid var(--oro);padding:3px 10px;
+  background:rgba(0,0,0,.3);border-radius:0 4px 4px 0;max-width:100%;
+}
+#aviso.salida{border-left-color:var(--oro);color:var(--oro)}
+#aviso.err{border-left-color:var(--rojo);color:#eab9b1}
+#capa.pregunta{display:flex;align-items:center;justify-content:center}
+.cuadro{
+  background:linear-gradient(#26332b,#1b241e);border:1px solid var(--linea);
+  border-radius:12px;padding:22px 20px;max-width:340px;width:100%;text-align:center;
+  box-shadow:0 18px 40px rgba(0,0,0,.6);
+}
+.previa{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:20px}
+.previa .mas{font:600 20px var(--display);color:var(--apag)}
+.previa .interro{
+  width:52px;height:73px;border:2px dashed var(--oro);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font:600 26px var(--display);color:var(--oro);
+}
+.abierta{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.quien{align-self:center;font:600 9.5px var(--sans);color:var(--apag);
+  writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.05em;
+  padding:0 1px;border-left:1px solid var(--linea)}
+.ops{display:flex;gap:14px;justify-content:center}
+.op{
+  background:transparent;border:1px solid var(--linea);border-radius:9px;
+  padding:10px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;
+  cursor:pointer;color:var(--hueso);
+}
+.op:active{border-color:var(--oro);background:rgba(216,178,90,.14)}
+.anuncio{
+  position:fixed;left:50%;top:44%;z-index:300;pointer-events:none;
+  transform:translate(-50%,-50%);
+  font:700 clamp(46px,16vw,92px)/1 var(--display);
+  letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;
+}
+.anuncio.pumba{color:var(--oro);
+  text-shadow:0 0 26px rgba(216,178,90,.55),0 4px 0 rgba(0,0,0,.5),0 8px 22px rgba(0,0,0,.7)}
+.anuncio.tapon{color:#d8564a;
+  text-shadow:0 0 26px rgba(176,48,40,.55),0 4px 0 rgba(0,0,0,.5),0 8px 22px rgba(0,0,0,.7)}
+#capa{
+  position:fixed;inset:0;z-index:80;background:rgba(10,15,11,.9);
+  padding:26px 16px;overflow-y:auto;
+}
+
+/* ══════ pantallas ══════ */
+.pantalla{
+  height:100dvh;overflow-y:auto;padding:26px 22px 40px;max-width:520px;margin:0 auto;
+  background:radial-gradient(ellipse 90% 50% at 50% 30%,var(--fieltro-2),var(--fieltro-4));
+}
+h1{font:600 34px/1.1 var(--display);margin-bottom:5px}
+h2{font:600 20px var(--display)}
+.btn{background:linear-gradient(#e6c470,#c39c40);color:#2b2210;border:none;
+     padding:13px 20px;border-radius:6px;font:600 15px var(--sans);cursor:pointer;
+     box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.btn.claro{background:var(--hueso);color:var(--tinta)}
+.btn.ghost{background:transparent;color:var(--apag);border:1px solid var(--linea);box-shadow:none}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{background:rgba(0,0,0,.2);border:1px solid var(--linea);color:var(--hueso);
+  padding:9px 15px;border-radius:6px;font:15px var(--sans);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--hueso);color:var(--tinta);border-color:var(--hueso)}
+.campo{margin-bottom:17px}
+label{display:block;font-size:12px;color:var(--apag);margin-bottom:6px}
+input{font:16px var(--sans);padding:10px;width:100%;background:rgba(0,0,0,.25);
+  color:var(--hueso);border:1px solid var(--linea);border-radius:6px;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:6px 2px;text-align:left;border-bottom:1px solid var(--linea);font-weight:400}
+th{font-weight:600}
+td.n{text-align:right;font-family:var(--display);font-size:16px}
+.gordo{font:34px var(--display);color:var(--oro);line-height:1}
+:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+/* ═══════════ modelo ═══════════ */
+const PALOS=[{c:"♠",roja:false},{c:"♥",roja:true},{c:"♦",roja:true},{c:"♣",roja:false}];
+const NR={2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10",11:"J",12:"Q",13:"K",14:"A",0:"★"};
+let _id=0;
+const crearCarta=(r,p)=>({id:++_id,rango:r,palo:p});
+const esJoker=c=>c.rango===0;
+const esMono=c=>c.rango===0||c.rango===2;
+const esFlor=c=>c.rango===3&&c.palo&&c.palo.roja;
+const esTresNegro=c=>c.rango===3&&c.palo&&!c.palo.roja;
+function valor(c){
+  if(esJoker(c))return 50;
+  if(c.rango===2||c.rango===14)return 20;
+  if(esFlor(c))return 100;
+  if(c.rango===3)return 0;
+  return c.rango>=8?10:5;
+}
+const nombre=c=>esJoker(c)?"Joker":NR[c.rango]+c.palo.c;
+function barajar(a){for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+function construirMazo(n){
+  const m=[];
+  for(let b=0;b<n;b++){
+    for(const p of PALOS)for(let r=2;r<=14;r++)m.push(crearCarta(r,p));
+    m.push(crearCarta(0,null));m.push(crearCarta(0,null));
+  }
+  return barajar(m);
+}
+/* ═══════════ estado ═══════════ */
+let G=null;
+const grupoDe=a=>G.grupos.find(g=>g.asientos.includes(a));
+function minimoSalida(g){
+  if(g.puntos<0)return 15;
+  if(g.puntos>=6000)return 120;
+  if(g.puntos>=3000)return 90;
+  return 50;
+}
+function nuevaPartida(cfg){
+  const grupos=[];
+  if(cfg.parejas){
+    grupos.push({id:0,nombre:"Pareja A",asientos:[0,2]});
+    grupos.push({id:1,nombre:"Pareja B",asientos:[1,3]});
+  } else cfg.nombres.forEach((n,i)=>grupos.push({id:i,nombre:n,asientos:[i]}));
+  grupos.forEach(g=>g.puntos=0);
+  G={cfg,jugadores:cfg.nombres.map((n,i)=>({nombre:n,mano:[],asiento:i})),
+     grupos,manoNum:0,repartidor:0};
+  repartirMano();
+}
+function repartirMano(){
+  const n=G.jugadores.length,mazo=construirMazo(n===2?2:3);
+  G.grupos.forEach(g=>{g.combis=[];g.flores=[];g.abierto=false;g.cogioPozo=false;g.turnos=0;});
+  G.jugadores.forEach(j=>j.mano=[]);
+  let corte=null;
+  const top=mazo[mazo.length-1];
+  if(esJoker(top)||top.rango===3)corte=mazo.pop();
+  for(let v=0;v<15;v++)
+    for(let i=0;i<n;i++)
+      G.jugadores[(G.repartidor+1+i)%n].mano.push(mazo.pop());
+  if(corte)G.jugadores[G.repartidor].mano.push(corte);
+  G.pozoTapado=[];
+  for(let i=0;i<6;i++)G.pozoTapado.push(mazo.pop());
+  G.pozo=[mazo.pop()];
+  let gu=0;
+  while(gu++<40){
+    const t=G.pozo[G.pozo.length-1];
+    if(t.rango===3||esMono(t))G.pozo.push(mazo.pop());else break;
+  }
+  G.taco=mazo;G.volteos=0;G.congeladores=[];
+  G.jugadores.forEach(j=>{
+    let ch=true;
+    while(ch){ch=false;
+      for(let i=j.mano.length-1;i>=0;i--)
+        if(esFlor(j.mano[i])){
+          grupoDe(j.asiento).flores.push(j.mano.splice(i,1)[0]);
+          if(G.taco.length)j.mano.push(G.taco.pop());
+          ch=true;
+        }
+    }
+  });
+  G.manoNum++;G.grupoCierra=null;G.turno=(G.repartidor+1)%n;
+  G.fase="traspaso";G.faseTurno="robar";
+  reiniciarTurno();G.mensaje="";G.error=false;G.mirando=null;
+}
+function reiniciarTurno(){
+  G.debeUsarTapa=false;G.idsDelPozo=new Set();G.sel=null;G.pozoRetenido=null;G.expandida=null;G.pregunta=null;G.turnoDePozo=false;
+  if(G.grupos)G.grupos.forEach(g=>g.combis.forEach(c=>c.cartas.forEach(x=>x.nueva=false)));
+}
+/* ═══════════ combinaciones ═══════════ */
+const combiDe=(g,k)=>g.combis.find(c=>c.clave===k);
+const naturales=cs=>cs.filter(c=>!esMono(c)).length;
+const monos=cs=>cs.filter(esMono).length;
+const esCanasta=c=>c.clave!==3&&c.cartas.length>=7;
+const etiquetaClave=k=>k==="M"?"Monos":k===3?"Treses":NR[k];
+function validar(clave,cs){
+  if(clave==="M"){
+    if(!cs.every(esMono))return "solo monos";
+    if(cs.length<5)return "mínimo 5";
+    if(cs.length>7)return "máximo 7";
+    return null;
+  }
+  if(clave===3){
+    if(!cs.every(esTresNegro))return "solo treses negros";
+    if(cs.length<3)return "mínimo 3";
+    return null;
+  }
+  if(!cs.every(c=>esMono(c)||c.rango===clave))return "no encaja";
+  if(naturales(cs)<2)return "faltan naturales";
+  if(monos(cs)>3)return "máx. 3 monos";
+  if(cs.length<3)return "mínimo 3";
+  return null;
+}
+function cabe(clave,cs,carta,g){
+  const t=cs.concat([carta]);
+  if(clave==="M")return t.every(esMono)&&t.length<=7;
+  if(clave===3)return t.every(esTresNegro);
+  if(!t.every(c=>esMono(c)||c.rango===clave))return false;
+  if(monos(t)>3)return false;                 // el tope de siempre
+  if(cs.length<7)return true;                 // todavía no es canasta
+  if(monos(cs)>0)return true;                 // sucia: sigue creciendo sin tope
+  // limpia cerrada: solo se puede ensuciar con un mono, y si te queda otra limpia
+  if(!esMono(carta)||!g)return false;
+  return g.combis.filter(c=>cuentaComoLimpia(c,g)).length>1;
+}
+const claveDe=c=>esMono(c)?"M":esTresNegro(c)?3:c.rango;
+// Se decide al cerrarse la canasta y queda sellado: coger el pozo después
+// no puede convertir en sucia una limpia que ya estaba hecha.
+function limpiaAlCerrar(c,g){
+  if(c.clave==="M")return true;
+  if(monos(c.cartas)===0)return true;
+  return !g.cogioPozo;
+}
+function cuentaComoLimpia(c,g){
+  if(!esCanasta(c))return false;
+  if(c.limpia!==undefined)return c.limpia;
+  return limpiaAlCerrar(c,g);
+}
+// una canasta se sella al llegar a 7: dobla si ese turno robaste del taco
+// La ronda es el giro completo de mesa: avanza cuando todos han echado una carta
+// al descarte. Estás en la ronda 1 mientras no hayas descartado ninguna vez.
+const rondaActual=()=>1+Math.min.apply(null,G.grupos.map(g=>g.turnos));
+const esTuPrimerTurno=g=>g.turnos===0;
+// Dobla solo la limpia bajada y completada entera en tu primer turno,
+// robando dos del taco. Es el caso excepcional, no el habitual.
+// limpia/sucia se sella en el instante de cerrarse la canasta: por eso puedes
+// hacer la limpia con monos justo antes de robar el pozo.
+function sellarCanastas(g){
+  g.combis.forEach(c=>{
+    if(c.limpia!==undefined||!esCanasta(c))return;
+    c.limpia=limpiaAlCerrar(c,g);
+    c.cerradaAhora=c.cartas.every(x=>x.nueva);
+  });
+}
+// el doble depende de cómo acabe el turno entero, así que se decide al final
+function cerrarSellos(g){
+  g.combis.forEach(c=>{
+    if(c.dobla!==undefined||!esCanasta(c))return;
+    c.dobla=!G.turnoDePozo && esTuPrimerTurno(g) && !!c.cerradaAhora;
+  });
+}
+function bonoCanasta(c,g){
+  if(!esCanasta(c))return 0;
+  if(c.clave==="M")return 2000;
+  const ases=c.clave===14;
+  if(cuentaComoLimpia(c,g))return (ases?1000:500)*(c.dobla?2:1);
+  return ases?500:300;
+}
+function resumenGrupo(g){
+  const canastas=g.combis.filter(esCanasta);
+  const limpias=canastas.filter(c=>cuentaComoLimpia(c,g));
+  const sucias=canastas.filter(c=>c.clave!=="M"&&monos(c.cartas)>0);
+  return {canastas,limpias,sucias,positivo:limpias.length>=1&&canastas.length>=2};
+}
+function puntosNuevosTurno(g){
+  let s=0;
+  g.combis.forEach(c=>c.cartas.forEach(x=>{if(x.nueva&&!G.idsDelPozo.has(x.id))s+=valor(x);}));
+  return s;
+}
+// ¿Cuánto puede sumar este jugador usando solo su mano y la tapa del pozo?
+// Sirve de portero: sin llegar al mínimo no se recibe el pozo entero.
+function maxPuntosSalida(cartas){
+  const porRango=new Map(); const comodines=[];
+  cartas.forEach(c=>{
+    if(esMono(c)){comodines.push(c);return;}
+    if(c.rango===3)return;                       // los treses no suman
+    if(!porRango.has(c.rango))porRango.set(c.rango,[]);
+    porRango.get(c.rango).push(c);
+  });
+  comodines.sort((a,b)=>valor(b)-valor(a));      // jokers primero, valen más
+  const juegos=[];
+  porRango.forEach((cs,r)=>{ if(cs.length>=2) juegos.push({r,nat:Math.min(cs.length,7),monos:0}); });
+
+  let i=0;
+  // 1) los que tienen justo 2 naturales necesitan un mono para ser juego
+  juegos.forEach(j=>{ if(j.nat===2&&i<comodines.length){j.monos=1;i++;} });
+  const validos=juegos.filter(j=>j.nat+j.monos>=3);
+  // 2) el resto de monos se reparten donde quepan (máx 3 por juego, máx 7 cartas)
+  for(const j of validos)
+    while(i<comodines.length&&j.monos<3&&j.nat+j.monos<7){j.monos++;i++;}
+
+  let total=0;
+  validos.forEach(j=>total+=j.nat*valor({rango:j.r,palo:PALOS[0]}));
+  for(let k=0;k<i;k++)total+=valor(comodines[k]);
+  // 3) los monos sobrantes pueden ser canasta de monos (mínimo 5)
+  const sobran=comodines.slice(i);
+  if(sobran.length>=5)sobran.slice(0,7).forEach(c=>total+=valor(c));
+  return total;
+}
+// Máximo que aún puedes sumar: lo que cabe en lo ya bajado más escaleras nuevas.
+function maxAlcanzable(mano,combis){
+  let total=0;
+  const resto=mano.slice();
+  (combis||[]).forEach(c=>{
+    if(c.clave===3)return;
+    // una limpia ya cerrada no admite más cartas; una sucia sí, sin tope
+    const cerrada=c.cartas.length>=7&&monos(c.cartas)===0;
+    let cap=cerrada?0:(c.clave==="M"?7-c.cartas.length:99);
+    if(cap<=0)return;
+    let capM=3-monos(c.cartas);
+    for(let i=resto.length-1;i>=0&&cap>0;i--){
+      const x=resto[i];
+      const encaja=c.clave==="M"?esMono(x):(esMono(x)?capM>0:x.rango===c.clave);
+      if(!encaja)continue;
+      if(c.clave!=="M"&&esMono(x))capM--;
+      total+=valor(x);resto.splice(i,1);cap--;
+    }
+  });
+  return total+maxPuntosSalida(resto);
+}
+// Tras bajar algo sin haber salido, ¿sigue siendo posible llegar al mínimo?
+function salidaSigueViva(g){
+  if(g.abierto)return true;
+  const min=minimoSalida(g), llevas=puntosNuevosTurno(g);
+  if(llevas>=min)return true;
+  return llevas+maxAlcanzable(G.jugadores[G.turno].mano,g.combis)>=min;
+}
+function tapaUsada(){
+  if(!G.debeUsarTapa)return true;
+  return G.grupos.some(g=>g.combis.some(c=>c.cartas.some(x=>x.id===G.debeUsarTapa)));
+}
+/* ═══════════ puntuación ═══════════ */
+function puntuarGrupo(g){
+  const r=resumenGrupo(g),det=[];let total=0;
+  let vCanastas=0,vEnCurso=0,bono=0;
+  g.combis.forEach(c=>{
+    const v=c.cartas.reduce((t,x)=>t+valor(x),0);
+    if(esCanasta(c)){vCanastas+=v;bono+=bonoCanasta(c,g);}
+    else vEnCurso+=v;
+  });
+  const vCartas=vCanastas+vEnCurso;
+
+  if(r.positivo){
+    if(vCartas){total+=vCartas;det.push(["Cartas bajadas",vCartas]);}
+    if(bono){total+=bono;det.push(["Canastas",bono]);}
+    if(r.canastas.length>=8){total+=2000;det.push(["Canastón",2000]);}
+    else if(r.canastas.length>=6){total+=500;det.push(["Canastillo",500]);}
+  }else{
+    // sin limpia y sucia: las cartas de la mesa restan y los bonus no cuentan,
+    // ni a favor ni en contra
+    if(vCartas){total-=vCartas;det.push(["Cartas bajadas, sin limpia y sucia",-vCartas]);}
+    if(bono)det.push(["Bonus de canasta, no cuenta",0]);
+  }
+
+  if(g.flores.length){
+    if(r.positivo){const f=g.flores.length*100;total+=f;det.push(["Flores ("+g.flores.length+")",f]);}
+    else det.push(["Flores ("+g.flores.length+"), no cuentan",0]);
+  }
+  if(G.grupoCierra===g.id){total+=100;det.push(["Cierre",100]);}
+
+  let mano=0;g.asientos.forEach(a=>G.jugadores[a].mano.forEach(c=>mano+=valor(c)));
+  if(mano){
+    // si te pillan sin nada en la mesa cuando alguien cierra, la mano resta el doble
+    const doble=G.grupoCierra!=null&&G.grupoCierra!==g.id&&g.combis.length===0;
+    const resta=doble?mano*2:mano;
+    total-=resta;
+    det.push([doble?"Cartas en la mano (doble: nada bajado)":"Cartas en la mano",-resta]);
+  }
+  if(!det.length)det.push(["Sin puntos",0]);
+  return {total,det,resumen:r};
+}
+function cerrarMano(motivo,idCierra){
+  G.grupoCierra=(idCierra===undefined?null:idCierra);
+  G.grupos.forEach(cerrarSellos);
+  G.resultados=G.grupos.map(g=>{const p=puntuarGrupo(g);g.puntos+=p.total;return{grupo:g,...p};});
+  G.motivoCierre=motivo;
+  const gan=G.grupos.slice().sort((a,b)=>b.puntos-a.puntos).find(g=>g.puntos>=G.cfg.objetivo);
+  G.ganador=gan||null;G.fase=gan?"finPartida":"finMano";
+  pintar();
+}
+/* ═══════════ acciones ═══════════ */
+function avisar(t,err){G.mensaje=t;G.error=!!err;}
+// Al agotarse el taco se voltea el montón entero, sin barajar: la carta de abajo
+// del descarte pasa a ser la primera que se roba. Se puede repetir cuantas veces
+// haga falta. Las 6 tapadas del reparto solo existen en el primer volteo y van
+// al fondo, así que son siempre las últimas cartas de la partida.
+function reponerTaco(){
+  if(G.taco.length)return true;
+  if(!G.pozo.length&&!G.pozoTapado.length)return false;
+  G.taco=[...G.pozoTapado,...G.pozo.slice().reverse()];
+  G.pozo=[];G.pozoTapado=[];G.congeladores=[];
+  G.volteos=(G.volteos||0)+1;
+  return true;
+}
+function robar(){
+  if(G.faseTurno!=="robar")return;
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno),out=[];
+  G.vuelos=[];
+  for(let k=0;k<2;k++){
+    let c=null;
+    while(true){
+      if(!G.taco.length&&!reponerTaco())break;   // ya no hay de dónde sacar
+      c=G.taco.pop();
+      // una flor no se queda: vuela al montón y se saca otra en su lugar
+      if(esFlor(c)){
+        g.flores.push(c);G.vuelos.push({carta:c,desde:"taco",hacia:"flores"});
+        c=null;continue;
+      }
+      break;
+    }
+    if(!c)break;                                  // solo se pudo sacar una: vale
+    out.push(c);
+    G.vuelos.push({carta:c,desde:"taco",hacia:"mano"});
+  }
+  // el reparto solo acaba si no se pudo sacar ninguna carta
+  // se voltea cuanto haga falta, pero si ya no se pueden sacar dos cartas
+  // es que solo queda una: ahí acaba el reparto
+  if(out.length<2)return cerrarMano("Se acabaron las cartas");
+  j.mano.push(...out);G.faseTurno="jugar";
+
+  pintar();
+}
+// cuántas cartas iguales hacen falta en la mano para llevarse el pozo
+const pozoCongelado=()=>G.congeladores&&G.congeladores.length>0;
+function cartasNecesarias(){ return pozoCongelado()?3:2; }
+function igualesEnMano(){
+  const t=G.pozo[G.pozo.length-1];
+  if(esMono(t))return 0;                       // un mono arriba no se puede coronar
+  return G.jugadores[G.turno].mano.filter(c=>c.rango===t.rango&&!esMono(c)).length;
+}
+// bajo el pozo solo se dice lo que las cartas no cuentan por sí solas
+function estadoPozo(){
+  if(!G.pozo.length)return "";
+  const t=G.pozo[G.pozo.length-1],g=grupoDe(G.turno);
+  if(esTresNegro(t)||esMono(t))return "taponado";
+  if(pozoCongelado())return "congelado";
+  if(!g.abierto&&igualesEnMano()>=2&&
+     puntosNuevosTurno(g)+maxPuntosSalida(G.jugadores[G.turno].mano.concat([t]))<minimoSalida(g))
+    return "no llegas a "+minimoSalida(g);
+  return "";
+}
+function puedeCogerPozo(){
+  if(G.faseTurno!=="robar"||!G.pozo.length)return false;
+  const t=G.pozo[G.pozo.length-1];
+  if(esTresNegro(t)||esMono(t))return false;
+  if(igualesEnMano()<cartasNecesarias())return false;
+  const g=grupoDe(G.turno);
+  if(!g.abierto&&puntosNuevosTurno(g)+maxPuntosSalida(G.jugadores[G.turno].mano.concat([t]))<minimoSalida(g))return false;
+  return true;
+}
+// El pozo se retiene hasta que la salida está hecha: así montas los tríos
+// que suman con la mano despejada, sin las cartas del pozo estorbando.
+function entregarPozo(){
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  let fl=0,n=0;
+  G.vuelos=[];
+  G.pozoRetenido.forEach(c=>{
+    if(esFlor(c)){g.flores.push(c);fl++;G.vuelos.push({carta:c,desde:"pozo",hacia:"flores"});return;}
+    j.mano.push(c);G.idsDelPozo.add(c.id);n++;
+    G.vuelos.push({carta:c,desde:"pozo",hacia:"mano"});
+  });
+  G.pozoRetenido=null;
+  return {n,fl};
+}
+function comprobarEntrega(){
+  if(!G.pozoRetenido)return;
+  const g=grupoDe(G.turno);
+  if(g.abierto||puntosNuevosTurno(g)>=minimoSalida(g)){
+    g.abierto=true;
+    const r=entregarPozo();
+    avisar("Pozo recibido");
+  }
+}
+function cogerPozo(){
+  if(!puedeCogerPozo()){avisar(estadoPozo()||"No puedes cogerlo",true);return pintar();}
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  const tapa=G.pozo[G.pozo.length-1];
+
+  // las cartas con las que robas salen de tu mano
+  const n=cartasNecesarias();
+  const usadas=j.mano.filter(c=>c.rango===tapa.rango&&!esMono(c)).slice(0,n);
+  usadas.forEach(c=>j.mano.splice(j.mano.findIndex(x=>x.id===c.id),1));
+
+  const nT=G.pozoTapado.length;
+  G.pozoRetenido=[...G.pozo,...G.pozoTapado].filter(c=>c.id!==tapa.id);
+  G.pozo=[];G.pozoTapado=[];
+
+  // la escalera con la que robas se baja sola
+  const clave=tapa.rango;
+  let combi=combiDe(g,clave);
+  if(!combi){combi={clave,cartas:[]};g.combis.push(combi);}
+  const tope=clave===3?99:7;
+  [...usadas,tapa].forEach(c=>{
+    if(combi.cartas.length<tope){c.nueva=true;c.bloqueada=true;combi.cartas.push(c);}
+    else j.mano.push(c);
+  });
+
+  g.cogioPozo=true;G.turnoDePozo=true;G.faseTurno="jugar";G.debeUsarTapa=false;G.congeladores=[];
+  avisar("");
+  sellarCanastas(g);comprobarEntrega();
+  pintar();
+}
+// Abrir escalera baja el mínimo completo de una vez (3 cartas, o 5 si son monos).
+// Nunca queda una escalera a medias, y por eso no hace falta poder retirarlas.
+function cartasParaAbrir(carta,mano){
+  if(esTresNegro(carta))return mano.filter(esTresNegro).slice(0,3);
+  if(esMono(carta)){
+    const ms=mano.filter(esMono).sort((a,b)=>valor(a)-valor(b));
+    return ms.length>=5?ms.slice(0,5):[];
+  }
+  const nat=mano.filter(c=>c.rango===carta.rango&&!esMono(c));
+  if(nat.length>=3)return nat.slice(0,3);
+  if(nat.length===2){
+    const mono=mano.filter(esMono).sort((a,b)=>valor(a)-valor(b))[0];
+    if(mono)return [...nat,mono];
+  }
+  return [];
+}
+function bajarGrupo(cartas,clave){
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  const combi={clave,cartas:[]};g.combis.push(combi);
+  cartas.forEach(c=>{
+    j.mano.splice(j.mano.findIndex(x=>x.id===c.id),1);
+    c.nueva=true;combi.cartas.push(c);
+  });
+  if(!salidaSigueViva(g)){                       // te dejaría encerrado: se deshace
+    combi.cartas.forEach(c=>{c.nueva=false;j.mano.push(c);});
+    g.combis.splice(g.combis.indexOf(combi),1);
+    avisar("Así no llegas a "+minimoSalida(g),true);
+    return pintar();
+  }
+  G.sel=null;avisar("");
+  sellarCanastas(g);comprobarEntrega();
+  pintar();
+}
+function abrirEscalera(cartaId){
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  const carta=j.mano.find(c=>c.id===cartaId);
+  if(!carta)return;
+  const clave=claveDe(carta);
+  if(combiDe(g,clave)){avisar("Ya la tienes",true);return pintar();}
+
+  // solo dos naturales: hace falta un mono, y decides tú cuál
+  if(!esMono(carta)&&!esTresNegro(carta)){
+    const nat=j.mano.filter(c=>c.rango===carta.rango&&!esMono(c));
+    const monos=j.mano.filter(esMono);
+    if(nat.length===2&&monos.length){
+      G.pregunta={rango:carta.rango};
+      return pintar();
+    }
+  }
+  const grupo=cartasParaAbrir(carta,j.mano);
+  if(!grupo.length){avisar("Te faltan cartas",true);return pintar();}
+  bajarGrupo(grupo,clave);
+}
+function responderMono(monoId){
+  const j=G.jugadores[G.turno],q=G.pregunta;
+  G.pregunta=null;
+  if(!q)return pintar();
+  if(monoId==null){avisar("");return pintar();}          // ha dicho que no
+  const nat=j.mano.filter(c=>c.rango===q.rango&&!esMono(c)).slice(0,2);
+  const mono=j.mano.find(c=>c.id===monoId);
+  if(!mono||nat.length<2){return pintar();}
+  bajarGrupo([...nat,mono],q.rango);
+}
+function aJuego(cartaId,destino){
+  if(G.fase!=="turno")return;
+  if(destino==="nuevo")return abrirEscalera(cartaId);
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  const i=j.mano.findIndex(c=>c.id===cartaId);if(i<0)return;
+  const carta=j.mano[i];
+  const combi=g.combis[destino];if(!combi)return;
+  if(!cabe(combi.clave,combi.cartas,carta,g)){avisar("Ahí no cabe",true);return pintar();}
+  const eraLimpiaCerrada=esCanasta(combi)&&cuentaComoLimpia(combi,g);
+  j.mano.splice(i,1);carta.nueva=true;combi.cartas.push(carta);
+  if(eraLimpiaCerrada&&esMono(carta))combi.limpia=false;   // ensuciada a propósito
+  if(!salidaSigueViva(g)){
+    combi.cartas.pop();carta.nueva=false;j.mano.push(carta);
+    if(eraLimpiaCerrada)combi.limpia=true;
+    avisar("Así no llegas a "+minimoSalida(g),true);
+    return pintar();
+  }
+  G.sel=null;avisar("");
+  sellarCanastas(g);comprobarEntrega();
+  pintar();
+}
+function descartar(cartaId){
+  if(G.faseTurno!=="jugar"){avisar("Roba antes de descartar",true);return pintar();}
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  const i=j.mano.findIndex(c=>c.id===cartaId);if(i<0)return;
+  const malo=g.combis.find(c=>validar(c.clave,c.cartas));
+  if(malo){avisar(etiquetaClave(malo.clave)+": "+validar(malo.clave,malo.cartas),true);return pintar();}
+  if(G.pozoRetenido){
+    avisar("Te faltan "+Math.max(0,minimoSalida(g)-puntosNuevosTurno(g))+" para salir",true);
+    return pintar();
+  }
+  const nuevos=puntosNuevosTurno(g);
+  if(!g.abierto&&nuevos>0){
+    if(nuevos<minimoSalida(g)){
+      avisar("Te faltan "+(minimoSalida(g)-nuevos)+" para salir",true);return pintar();
+    }
+    g.abierto=true;
+  }
+  const seVa=j.mano.length===1;   // se puede cerrar sin canastas, a costa de los negativos
+  const carta=j.mano.splice(i,1)[0];G.pozo.push(carta);
+  if(esMono(carta))G.congeladores.push(carta);
+  if(esTresNegro(carta))anunciar("tapón","tapon");
+  if(j.mano.length===1)anunciar("pumba","pumba");   // se cruza en el pozo hasta que alguien lo robe
+  cerrarSellos(g);
+  if(seVa)return cerrarMano(j.nombre+" ha cerrado",g.id);
+  g.turnos++;
+  reiniciarTurno();
+  G.turno=(G.turno+1)%G.jugadores.length;
+  G.faseTurno="robar";G.fase="traspaso";avisar("");pintar();
+}
+function siguienteMano(){G.repartidor=(G.repartidor+1)%G.jugadores.length;repartirMano();pintar();}
+
+/* ═══════════ pintado ═══════════ */
+const app=document.getElementById("app");
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const ordenRango=r=>r===0?102:r===2?101:r===3?0:r;
+
+function htmlCarta(c,o={}){
+  const cls=["carta"];
+  if(esJoker(c)||(c.palo&&c.palo.roja))cls.push("roja");
+  if(o.marcar&&c.nueva)cls.push("nueva");
+  if(o.sel)cls.push("sel");
+  if(o.cls)cls.push(o.cls);
+  const r=esJoker(c)?"★":NR[c.rango],p=esJoker(c)?"":c.palo.c;
+  const a=o.src?` data-src="${o.src}" data-id="${c.id}"`:"";
+  return `<div class="${cls.join(" ")}"${a} style="${o.style||""}" aria-label="${esc(nombre(c))}">
+    <span class="ix">${r}<span class="s">${p||"★"}</span></span>
+    <span class="pip">${p||"★"}</span></div>`;
+}
+const htmlDorso=(txt,style)=>`<div class="carta dorso" style="${style||""}">${txt?`<span class="cnt">${txt}</span>`:""}</div>`;
+
+// La carta que corona el taco dice de un vistazo si la canasta es limpia o sucia:
+// roja para limpia, negra para sucia.
+function cartaCorona(c,g){
+  const limpia=cuentaComoLimpia(c,g);
+  const roja=x=>esJoker(x)||(x.palo&&x.palo.roja);
+  const negra=x=>x.palo&&!x.palo.roja;
+  let cand=limpia?c.cartas.filter(roja):c.cartas.filter(negra);
+  if(!cand.length)cand=limpia?c.cartas.filter(x=>!esMono(x)):c.cartas.slice();
+  return cand[0]||c.cartas[0];
+}
+function tacoCanasta(c,g,i,propio){
+  const limpia=cuentaComoLimpia(c,g);
+  return `<div class="cerrada ${limpia?"limpia":"sucia"}" ${propio?`data-exp="${i}"`:""}>
+    <div class="taquito">
+      <div class="carta borde b3"></div>
+      <div class="carta borde b2"></div>
+      <div class="carta borde b1"></div>
+      ${htmlCarta(cartaCorona(c,g),{cls:"corona"})}
+    </div>
+    <span class="et">${bonoCanasta(c,g)}<br><i>${limpia?"limpia":"sucia"}${monos(c.cartas)?" ·"+monos(c.cartas)+"m":""}</i></span></div>`;
+}
+// las canastas cerradas van al lateral; las escaleras en curso, apiladas en vertical
+function juegosPartidos(g,propio){
+  const lat=[],tira=[];
+  if(g.flores.length)
+    lat.push(`<div class="cerrada flor">
+      <div class="taquito">${g.flores.length>1?`<div class="carta borde b2"></div>`:""}
+        ${htmlCarta(g.flores[0],{cls:"corona"})}</div>
+      <span class="et">${g.flores.length*100}</span></div>`);
+  g.combis.forEach((c,i)=>{
+    if(esCanasta(c)){lat.push(tacoCanasta(c,g,i,propio));return;}
+    const err=validar(c.clave,c.cartas);
+    tira.push(`<div class="juego${err&&propio?" mal":""}" ${propio?`data-drop="juego" data-i="${i}"`:""}>
+      <div class="tit">${etiquetaClave(c.clave)}·${c.cartas.length}</div>
+      <div class="cs">${c.cartas.map(x=>htmlCarta(x,{marcar:propio})).join("")}</div></div>`);
+  });
+  if(propio)tira.push(`<div class="hueco" data-drop="nuevo">+</div>`);
+  return {lat,tira};
+}
+function bandaJuegos(g,propio){
+  const {lat,tira}=juegosPartidos(g,propio);
+  return `<div class="banda zonaJuegos">
+    <div class="lateral">${lat.join("")}</div>
+    <div class="tira juegos">${tira.join("")||""}</div>
+  </div>`;
+}
+function montones(mano){
+  const m=new Map();
+  mano.forEach(c=>{const k=esJoker(c)?0:c.rango;if(!m.has(k))m.set(k,[]);m.get(k).push(c);});
+  return [...m.entries()].sort((a,b)=>ordenRango(a[0])-ordenRango(b[0]));
+}
+function abanicoDorsos(n){
+  const v=Math.min(n,G.jugadores.length>=4?5:G.jugadores.length===3?7:9);
+  let h="";
+  for(let i=0;i<v;i++){
+    const t=(i-(v-1)/2)*4.5;
+    h+=htmlDorso("",`transform:rotate(${t.toFixed(1)}deg) translateY(${Math.abs(t)*.16}px)`);
+  }
+  return h;
+}
+
+function vistaTurno(){
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno),r=resumenGrupo(g);
+  const robando=G.faseTurno==="robar";
+  const tapa=G.pozo.length?G.pozo[G.pozo.length-1]:null;
+  const nuevos=puntosNuevosTurno(g);
+  const otros=G.grupos.filter(x=>x.id!==g.id);
+
+  app.innerHTML=`
+  <div id="mesa" class="j${G.jugadores.length}">
+    <!-- cada rival en su asiento, con lo suyo debajo -->
+    <div class="banda asientos">
+      ${otros.map(x=>{
+        const {lat,tira}=juegosPartidos(x,false);
+        const cartas=x.asientos.reduce((t,a)=>t+G.jugadores[a].mano.length,0);
+        return `<div class="asiento" data-rival="${x.id}">
+          <div class="abanico">${abanicoDorsos(cartas)}</div>
+          <div class="placa"><b>${esc(x.nombre)}</b>
+            <span class="p">${x.puntos.toLocaleString("es")}</span>
+            <span class="meta">${cartas}</span>
+            ${cartas===1?`<span class="pumbita">pumba</span>`:""}</div>
+          <div class="susjuegos">${lat.concat(tira).join("")}</div>
+        </div>`;
+      }).join("")}
+    </div>
+
+    <!-- río: taco y pozo -->
+    <div class="rio">
+      <div class="pila" data-drop="taco" ${robando?'data-src="taco"':""}>
+        <div class="stack">
+          ${htmlDorso("","transform:translate(4px,4px)")}
+          ${htmlDorso("","transform:translate(2px,2px)")}
+          ${htmlDorso(G.taco.length)}
+        </div>
+        <span class="pie">${G.volteos?"volteado"+(G.volteos>1?" ×"+G.volteos:""):""}</span>
+      </div>
+      <div class="pila" data-drop="pozo" ${tapa&&robando?'data-src="pozo"':""}>
+        <div class="stack">
+          ${G.pozoRetenido?htmlDorso("","transform:translate(4px,4px);opacity:.55")
+            +htmlDorso("","transform:translate(2px,2px);opacity:.7")
+            +htmlDorso(G.pozoRetenido.length,"opacity:.85"):
+            (G.pozoTapado.length?htmlDorso("","transform:translate(4px,4px)")+htmlDorso("","transform:translate(2px,2px)")
+             :G.pozo.length>1?htmlDorso("","transform:translate(2px,2px)"):"")
+            + (!G.pozoRetenido&&G.congeladores?G.congeladores.filter(c=>!tapa||c.id!==tapa.id)
+                .map((c,k)=>htmlCarta(c,{cls:"cruzada",style:"transform:rotate(90deg) translateX("+(k*5-4)+"px)"})).join(""):"")
+            + (tapa?htmlCarta(tapa,{cls:esMono(tapa)?"cruzada arriba":"tapa",
+                 style:esMono(tapa)?"transform:rotate(90deg)":""}):htmlDorso("","opacity:.3"))}
+          ${!G.pozoRetenido&&G.pozo.length+G.pozoTapado.length?`<span class="marca">${G.pozo.length+G.pozoTapado.length}</span>`:""}
+        </div>
+        <span class="pie">${G.pozoRetenido?"apartado":robando?esc(estadoPozo()):""}</span>
+      </div>
+    </div>
+
+    <!-- mis canastas -->
+    ${bandaJuegos(g,true)}
+
+    <!-- avisos, en su propia franja para no tapar la mesa -->
+    <div class="banda mensajera">
+      ${G.mensaje?`<span id="aviso" class="${G.error?"err":""}">${esc(G.mensaje)}</span>`
+        :(!g.abierto&&G.faseTurno==="jugar"&&nuevos>0
+          ?`<span id="aviso" class="salida">salida ${nuevos}/${minimoSalida(g)}</span>`:"")}
+    </div>
+
+    <!-- mi mano -->
+    <div class="banda mimano" data-drop="mano">
+      <div style="display:flex;justify-content:center;gap:9px;margin-bottom:8px;align-items:center">
+        <span class="placa activo"><b>${esc(G.cfg.parejas?g.nombre:j.nombre)}</b>
+          <span class="p">${g.puntos.toLocaleString("es")}</span></span>
+        <span class="meta">${g.abierto?(r.canastas.length===1?"1 canasta":r.canastas.length+" canastas"):"salida "+minimoSalida(g)}</span>
+      </div>
+      <div class="mano">
+        ${montones(j.mano).map(([k,cs])=>{
+          const c=cs[0];
+          return `<div class="monton" data-rango="${k}">
+            ${cs.length>2?`<div class="carta prof a"></div>`:""}
+            ${cs.length>1?`<div class="carta prof b"></div>`:""}
+            ${htmlCarta(c,{src:"mano",sel:G.sel===c.id,cls:"frente"})}
+            ${cs.length>1?`<span class="badge">${cs.length}</span>`:""}</div>`;
+        }).join("")}
+      </div>
+    </div>
+
+  </div>
+  ${G.mirando!=null?capaRival():""}
+  ${G.pregunta?capaPregunta():""}
+  ${G.expandida!=null?capaCanasta():""}`;
+  if(G.sel)marcarObjetivos(G.sel);
+  activar();
+  reproducirVuelos();
+}
+function capaPregunta(){
+  const q=G.pregunta;if(!q)return "";
+  const j=G.jugadores[G.turno];
+  const nat=j.mano.filter(c=>c.rango===q.rango&&!esMono(c)).slice(0,2);
+  // una opción por tipo de comodín: un 2 o un joker
+  const vistos=new Set(),ops=[];
+  j.mano.filter(esMono).forEach(c=>{
+    const t=esJoker(c)?"joker":"dos";
+    if(vistos.has(t))return;
+    vistos.add(t);ops.push(c);
+  });
+  return `<div id="capa" class="pregunta">
+    <div class="cuadro">
+      <h2>Solo tienes dos ${NR[q.rango]}</h2>
+      <p class="meta" style="margin:5px 0 16px">Puedes completar la escalera con un comodín. ¿Cuál pones?</p>
+      <div class="previa">
+        ${nat.map(c=>htmlCarta(c)).join("")}
+        <span class="mas">+</span>
+        <span class="interro">?</span>
+      </div>
+      <div class="ops">
+        ${ops.map(c=>`<button class="op" onclick="responderMono(${c.id})">
+          ${htmlCarta(c)}<span class="meta">${esJoker(c)?"Joker":"Un 2"} · ${valor(c)} pts</span></button>`).join("")}
+      </div>
+      <button class="btn ghost" style="margin-top:18px" onclick="responderMono(null)">No bajarla todavía</button>
+    </div></div>`;
+}
+function capaCanasta(){
+  const g=grupoDe(G.turno),c=g.combis[G.expandida];
+  if(!c)return "";
+  const limpia=cuentaComoLimpia(c,g);
+  return `<div id="capa" class="pregunta" onclick="G.expandida=null;pintar()">
+    <div class="cuadro">
+      <h2>${etiquetaClave(c.clave)} · ${limpia?"limpia":"sucia"}</h2>
+      <p class="meta" style="margin:4px 0 16px">${c.cartas.length} cartas ·
+        ${c.cartas.reduce((s2,x)=>s2+valor(x),0)} pts en cartas</p>
+      <div class="abierta">${c.cartas.map(x=>htmlCarta(x)).join("")}</div>
+      <p class="meta" style="margin-top:16px">toca para cerrar</p>
+    </div></div>`;
+}
+function capaRival(){
+  const x=G.grupos.find(y=>y.id===G.mirando);
+  if(!x)return "";
+  return `<div id="capa">
+    <h2>${esc(x.nombre)}</h2>
+    <p class="meta" style="margin:3px 0 16px">${x.puntos.toLocaleString("es")} pts ·
+      ${x.asientos.map(a=>esc(G.jugadores[a].nombre)+": "+G.jugadores[a].mano.length+" cartas").join(" · ")}</p>
+    <div class="tira juegos" style="flex-wrap:wrap;padding:0">${juegosPartidos(x,false).lat.concat(juegosPartidos(x,false).tira).join("")}</div>
+    <p class="meta" style="margin-top:22px">toca para cerrar</p></div>`;
+}
+function vistaTraspaso(){
+  const j=G.jugadores[G.turno];
+  app.innerHTML=`<div class="pantalla" style="display:flex;flex-direction:column;justify-content:center;text-align:center">
+    <h1>${esc(j.nombre)}</h1>
+    <p class="meta" style="margin-bottom:28px">Pasa el dispositivo</p>
+    <div><button class="btn" onclick="G.fase='turno';pintar()">Ver mis cartas</button></div>
+    <p style="margin-top:26px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
+      onclick="cambiarAnimacion()">animación: ${textoAnimacion(G.cfg.animacion)}</button></p></div>`;
+}
+function vistaFin(){
+  const fin=G.fase==="finPartida";
+  app.innerHTML=`<div class="pantalla">
+    <h1>${fin?esc(G.ganador.nombre)+" gana la partida":"Recuento"}</h1>
+    <p class="meta" style="margin-bottom:18px">${esc(G.motivoCierre)} · se juega a ${G.cfg.objetivo.toLocaleString("es")}</p>
+    ${G.resultados.map(res=>`<div style="border-top:1px solid var(--linea);padding-top:13px;margin-top:17px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <h2>${esc(res.grupo.nombre)}</h2>
+        <span class="gordo">${res.total>=0?"+":""}${res.total.toLocaleString("es")}</span></div>
+      <table style="margin-top:9px">
+        ${res.det.map(d=>`<tr><td>${esc(d[0])}</td><td class="n">${d[1].toLocaleString("es")}</td></tr>`).join("")}
+        <tr><th>Acumulado</th><td class="n"><strong>${res.grupo.puntos.toLocaleString("es")}</strong></td></tr>
+      </table></div>`).join("")}
+    <div style="margin-top:26px">${fin?`<button class="btn" onclick="location.reload()">Nueva partida</button>`
+      :`<button class="btn" onclick="siguienteMano()">Repartir de nuevo</button>`}</div></div>`;
+}
+let cfgTmp={n:4,parejas:false,objetivo:10000,animacion:"siempre",nombres:["Jugador 1","Jugador 2","Jugador 3","Jugador 4"]};
+function vistaSetup(){
+  const n=cfgTmp.n;
+  app.innerHTML=`<div class="pantalla">
+    <h1>Canastón</h1>
+    <p class="meta" style="margin-bottom:24px">Partida local. Se pasa el dispositivo en cada turno.</p>
+    <div class="campo"><label>Jugadores</label>
+      <div class="seg">${[2,3,4].map(k=>`<button aria-pressed="${n===k}" onclick="setN(${k})">${k}</button>`).join("")}</div>
+      <p class="meta" style="margin-top:7px">${n===2?"2 barajas":"3 barajas"}</p></div>
+    ${n===4?`<div class="campo"><label>Modalidad</label><div class="seg">
+      <button aria-pressed="${!cfgTmp.parejas}" onclick="setP(false)">Individual</button>
+      <button aria-pressed="${cfgTmp.parejas}" onclick="setP(true)">Por parejas</button></div>
+      </div>`:""}
+    <div class="campo"><label>Se gana a</label>
+      <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfgTmp.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
+    <div class="campo"><label>Animaciones</label>
+      <div class="seg">${[["siempre","Sí"],["sistema","Sistema"],["nunca","No"]]
+        .map(([k,t])=>`<button aria-pressed="${cfgTmp.animacion===k}" onclick="setA('${k}')">${t}</button>`).join("")}</div>
+      ${cfgTmp.animacion==="siempre"?`<p class="meta" style="margin-top:7px">Se verán aunque tengas activado Reducir movimiento en el móvil.</p>`:""}</div>
+    <div class="campo"><label>Nombres</label>
+      ${Array.from({length:n},(_,i)=>`<input value="${esc(cfgTmp.nombres[i]||"Jugador "+(i+1))}" oninput="cfgTmp.nombres[${i}]=this.value">`).join("")}</div>
+    <button class="btn" onclick="empezar()">Empezar partida</button></div>`;
+}
+function setN(k){cfgTmp.n=k;if(k!==4)cfgTmp.parejas=false;
+  while(cfgTmp.nombres.length<k)cfgTmp.nombres.push("Jugador "+(cfgTmp.nombres.length+1));vistaSetup();}
+function setP(v){cfgTmp.parejas=v;vistaSetup();}
+function setO(v){cfgTmp.objetivo=v;vistaSetup();}
+function setA(v){cfgTmp.animacion=v;vistaSetup();}
+function empezar(){nuevaPartida({nombres:cfgTmp.nombres.slice(0,cfgTmp.n),parejas:cfgTmp.parejas,objetivo:cfgTmp.objetivo,animacion:cfgTmp.animacion});pintar();}
+function pintar(){
+  if(!G)return vistaSetup();
+  if(G.fase==="traspaso")vistaTraspaso();
+  else if(G.fase==="turno")vistaTurno();
+  else if(G.fase==="finMano"||G.fase==="finPartida")vistaFin();
+  else vistaSetup();
+  reproducirAnuncios();
+}
+/* ═══════════ anuncios de mesa ═══════════ */
+function anunciar(txt,tipo){ (G.anuncios=G.anuncios||[]).push({txt,tipo}); }
+function mostrarAnuncio(a){
+  const el=document.createElement("div");
+  el.className="anuncio "+a.tipo;
+  el.textContent=a.txt;
+  document.body.appendChild(el);
+  const quieto=()=>setTimeout(()=>el.remove(),1100);
+  if(!el.animate||sinMovimiento())return quieto();
+  const an=el.animate([
+    {transform:"translate(-50%,-50%) scale(.35) rotate(-16deg)",opacity:0,offset:0},
+    {transform:"translate(-50%,-50%) scale(1.14) rotate(-5deg)",opacity:1,offset:.22},
+    {transform:"translate(-50%,-50%) scale(1) rotate(-5deg)",opacity:1,offset:.68},
+    {transform:"translate(-50%,-50%) scale(1.45) rotate(-5deg)",opacity:0,offset:1}
+  ],{duration:1250,easing:"cubic-bezier(.2,.9,.3,1)",fill:"both"});
+  an.onfinish=()=>el.remove();
+  setTimeout(()=>el.remove(),1700);
+}
+function reproducirAnuncios(){
+  const as=G.anuncios; G.anuncios=null;
+  if(!as)return;
+  as.forEach((a,i)=>setTimeout(()=>mostrarAnuncio(a),i*950));
+}
+
+/* ═══════════ vuelos de cartas ═══════════ */
+// "siempre" ignora el ajuste del sistema, "sistema" lo respeta, "nunca" las desactiva
+const reduceElSistema=()=>!!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches);
+function sinMovimiento(){
+  const m=G&&G.cfg?G.cfg.animacion:"siempre";
+  if(m==="siempre")return false;
+  if(m==="nunca")return true;
+  return reduceElSistema();
+}
+function cambiarAnimacion(){
+  const orden=["siempre","sistema","nunca"];
+  G.cfg.animacion=orden[(orden.indexOf(G.cfg.animacion)+1)%3];
+  pintar();
+}
+const textoAnimacion=m=>m==="siempre"?"siempre":m==="nunca"?"desactivadas":"según el sistema";
+
+function rectDe(sel){
+  const el=document.querySelector(sel);
+  return el?el.getBoundingClientRect():null;
+}
+function elementoDestino(v){
+  if(v.hacia==="flores")
+    return document.querySelector("[data-flores]")||document.querySelector(".mano");
+  const k=esJoker(v.carta)?0:v.carta.rango;
+  return document.querySelector('.monton[data-rango="'+k+'"]')||document.querySelector(".mano");
+}
+function unVuelo(carta,r0,r1,retraso,dur,alAterrizar){
+  const el=document.createElement("div");
+  el.className="vuelo";
+  el.style.cssText="left:"+r0.left+"px;top:"+r0.top+"px;width:"+r0.width+"px;height:"+r0.height+"px";
+  el.innerHTML=htmlCarta(carta);
+  const c=el.firstElementChild;
+  c.style.width="100%";c.style.height="100%";
+  document.body.appendChild(el);
+  const escala=Math.max(.4,Math.min(1,r1.width/r0.width));
+  const fin=()=>{el.remove();alAterrizar&&alAterrizar();};
+  if(!el.animate){setTimeout(fin,retraso+dur);return;}
+  const an=el.animate([
+    {transform:"translate(0,0) scale(1) rotate(0deg)",opacity:1,offset:0},
+    {transform:"translate("+((r1.left-r0.left)*.55)+"px,"+((r1.top-r0.top)*.42)+"px) scale("+
+       ((1+escala)/2*1.08)+") rotate(-4deg)",opacity:1,offset:.55},
+    {transform:"translate("+(r1.left-r0.left)+"px,"+(r1.top-r0.top)+"px) scale("+escala+") rotate(0deg)",
+       opacity:1,offset:1}
+  ],{duration:dur,delay:retraso,easing:"cubic-bezier(.3,.7,.25,1)",fill:"both"});
+  an.onfinish=fin;
+  setTimeout(fin,retraso+dur+400);           // red de seguridad
+}
+function reproducirVuelos(){
+  const vs=G.vuelos;G.vuelos=null;
+  if(!vs||!vs.length||sinMovimiento())return;
+  const origenes={
+    taco:rectDe('[data-drop="taco"] .stack'),
+    pozo:rectDe('[data-drop="pozo"] .stack')
+  };
+  const paso=vs.length>4?55:230, dur=vs.length>4?420:540;
+  // se oculta cada destino hasta que su carta aterriza: si no, aparece antes de volar
+  const pendientes=new Map();
+  const lista=vs.slice(0,16).map(v=>{
+    const el=elementoDestino(v);
+    if(el){
+      pendientes.set(el,(pendientes.get(el)||0)+1);
+      el.style.visibility="hidden";
+    }
+    return {v,el,r1:el?el.getBoundingClientRect():null};
+  });
+  lista.forEach((x,i)=>{
+    const r0=origenes[x.v.desde];
+    if(!r0||!x.r1){if(x.el)x.el.style.visibility="";return;}
+    unVuelo(x.v.carta,r0,x.r1,i*paso,dur,()=>{
+      const n=(pendientes.get(x.el)||1)-1;
+      pendientes.set(x.el,n);
+      if(n<=0)x.el.style.visibility="";
+    });
+  });
+}
+// ¿puede esta carta abrir una escalera nueva ahora mismo? (hacen falta las 3)
+function puedeAbrirJuego(carta,mano){
+  if(esTresNegro(carta))return mano.filter(esTresNegro).length>=3;
+  if(esMono(carta))return mano.filter(esMono).length>=5;   // canasta de monos
+  const nat=mano.filter(c=>c.rango===carta.rango&&!esMono(c)).length;
+  const mon=mano.filter(esMono).length;
+  return nat>=3||(nat>=2&&mon>=1);
+}
+function objetivosDe(cartaId){
+  const g=grupoDe(G.turno);
+  const mano=G.jugadores[G.turno].mano;
+  const carta=mano.find(c=>c.id===cartaId);
+  if(!carta)return [];
+  const z=G.faseTurno==="jugar"?["pozo"]:[];   // sin robar todavía no se descarta
+  g.combis.forEach((c,i)=>{if(cabe(c.clave,c.cartas,carta,g))z.push("juego:"+i);});
+  // escalera nueva: solo si no tienes ya una de ese rango y puedes completarla
+  if(!combiDe(g,claveDe(carta))&&puedeAbrirJuego(carta,mano))z.push("nuevo");
+  return z;
+}
+function marcarObjetivos(id){
+  const z=objetivosDe(id);
+  document.querySelectorAll("[data-drop]").forEach(el=>{
+    const t=el.dataset.drop,k=t==="juego"?"juego:"+el.dataset.i:t;
+    if(z.includes(k))el.classList.add("acepta");
+  });
+}
+function activar(){
+  document.querySelectorAll("[data-src]").forEach(el=>el.addEventListener("pointerdown",abajo,{passive:false}));
+  document.querySelectorAll("[data-drop]").forEach(el=>el.addEventListener("click",tocarZona));
+  document.querySelectorAll("[data-exp]").forEach(el=>
+    el.addEventListener("click",e=>{
+      if(e.target.closest("[data-src]"))return;   // el toque era sobre una carta
+      const i=+el.dataset.exp;
+      G.expandida=(G.expandida===i)?null:i;
+      pintar();
+    }));
+  document.querySelectorAll("[data-rival]").forEach(el=>
+    el.addEventListener("click",()=>{G.mirando=+el.dataset.rival;pintar();}));
+  const capa=document.getElementById("capa");
+  if(capa)capa.addEventListener("click",()=>{G.mirando=null;pintar();});
+}
+function tocarZona(e){
+  if(!G.sel)return;
+  const el=e.currentTarget,t=el.dataset.drop;
+  if(!el.classList.contains("acepta"))return;
+  e.stopPropagation();
+  if(t==="pozo")descartar(G.sel);
+  else if(t==="juego")aJuego(G.sel,+el.dataset.i);
+  else if(t==="nuevo")aJuego(G.sel,"nuevo");
+}
+let arr=null,movido=false;
+function abajo(e){
+  const el=e.currentTarget,src=el.dataset.src,id=+el.dataset.id;
+  e.preventDefault();
+  if(src==="taco")return robar();
+  if(src==="pozo")return cogerPozo();
+  if(G.fase!=="turno")return;
+  movido=false;
+  arr={el,id,fantasma:null,encima:null,x0:e.clientX,y0:e.clientY};
+  window.addEventListener("pointermove",mover,{passive:false});
+  window.addEventListener("pointerup",arriba);
+  window.addEventListener("pointercancel",arriba);
+}
+function mover(e){
+  if(!arr)return;
+  const dx=e.clientX-arr.x0,dy=e.clientY-arr.y0;
+  if(!movido&&Math.hypot(dx,dy)<9)return;
+  e.preventDefault();
+  if(!movido){
+    movido=true;
+    const rc=arr.el.getBoundingClientRect();
+    const f=arr.el.cloneNode(true);
+    f.id="fantasma";f.classList.remove("sel");
+    f.style.width=rc.width+"px";f.style.height=rc.height+"px";
+    document.body.appendChild(f);arr.fantasma=f;
+    arr.el.classList.add("tenue");
+    marcarObjetivos(arr.id);
+  }
+  arr.fantasma.style.left=e.clientX+"px";
+  arr.fantasma.style.top=e.clientY+"px";
+  const bajo=document.elementFromPoint(e.clientX,e.clientY);
+  const z=bajo&&bajo.closest?bajo.closest("[data-drop]"):null;
+  if(arr.encima&&arr.encima!==z)arr.encima.classList.remove("encima");
+  if(z&&z.classList.contains("acepta")){z.classList.add("encima");arr.encima=z;}
+  else arr.encima=null;
+}
+function arriba(){
+  if(!arr)return;
+  window.removeEventListener("pointermove",mover);
+  window.removeEventListener("pointerup",arriba);
+  window.removeEventListener("pointercancel",arriba);
+  const {id,encima,fantasma,el}=arr;arr=null;
+  if(fantasma)fantasma.remove();
+  el.classList.remove("tenue");
+  if(!movido){G.sel=(G.sel===id)?null:id;return pintar();}
+  document.querySelectorAll(".acepta,.encima").forEach(x=>x.classList.remove("acepta","encima"));
+  if(!encima)return pintar();
+  const t=encima.dataset.drop;
+  if(t==="pozo")descartar(id);
+  else if(t==="juego")aJuego(id,+encima.dataset.i);
+  else if(t==="nuevo")aJuego(id,"nuevo");
+}
+pintar();
+</script>
+</body>

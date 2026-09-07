@@ -1,0 +1,733 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Canastón</title>
+<style>
+:root{
+  --fieltro-1:#3a5b45; --fieltro-2:#2c4634; --fieltro-3:#1d3024; --fieltro-4:#131f18;
+  --madera:#2a1d14; --madera-luz:#3d2b1d;
+  --hueso:#f6f2e8; --apag:#b9b3a3; --tinta:#1b211c;
+  --rojo:#b03028; --oro:#d8b25a; --oro-hondo:#8a6d2c;
+  --linea:rgba(246,242,232,.14);
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{
+  background:var(--madera);
+  color:var(--hueso);font:15px/1.4 var(--sans);
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;
+}
+.meta{font-size:11.5px;color:var(--apag);letter-spacing:.01em}
+
+/* ══════ la mesa ══════ */
+#mesa{
+  --mw:52px;--mh:73px;   /* mano */
+  --jw:34px;--jh:48px;   /* escaleras */
+  --pw:56px;--ph:79px;   /* taco y pozo */
+  --tw:30px;--th:42px;   /* taquitos de canasta */
+  --aw:26px;--ah:37px;   /* dorsos del rival */
+  position:relative;height:100dvh;display:flex;flex-direction:column;
+  background:
+    radial-gradient(ellipse 96% 52% at 50% 44%,
+      var(--fieltro-1) 0%, var(--fieltro-2) 42%, var(--fieltro-3) 74%, var(--fieltro-4) 100%);
+  box-shadow:inset 0 0 0 5px var(--madera-luz), inset 0 0 34px rgba(0,0,0,.6);
+}
+#mesa::before{ /* grano del fieltro */
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.045;
+  background-image:
+    repeating-linear-gradient(37deg,#fff 0 1px,transparent 1px 3px),
+    repeating-linear-gradient(-53deg,#fff 0 1px,transparent 1px 3px);
+}
+#mesa.j2{--mw:62px;--mh:87px;--jw:40px;--jh:56px;--pw:66px;--ph:93px;--tw:34px;--th:48px;--aw:30px;--ah:42px}
+#mesa.j4{--mw:44px;--mh:62px;--jw:29px;--jh:41px;--pw:50px;--ph:70px;--tw:25px;--th:35px;--aw:22px;--ah:31px}
+.banda{position:relative;z-index:1;flex:0 0 auto}
+.tira{
+  display:flex;gap:7px;align-items:flex-end;overflow-x:auto;
+  padding:0 12px;scrollbar-width:none;
+}
+.tira::-webkit-scrollbar{display:none}
+
+/* ══════ cartas ══════ */
+.carta{
+  position:relative;flex:0 0 auto;
+  width:var(--w,52px);height:var(--h,73px);
+  background:linear-gradient(157deg,#fffdf8 0%,#f4eee0 62%,#e7dfcc 100%);
+  color:var(--tinta);border-radius:6px;
+  box-shadow:0 1px 1px rgba(0,0,0,.3),0 3px 7px rgba(0,0,0,.42);
+  font-family:var(--display);overflow:hidden;
+}
+.carta::after{ /* filo interior */
+  content:"";position:absolute;inset:0;border-radius:6px;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.75);
+}
+.carta .ix{
+  position:absolute;top:3px;left:4px;display:flex;flex-direction:column;
+  align-items:center;line-height:.94;font-weight:600;
+  font-size:calc(var(--w,52px)*.30);
+}
+.carta .ix .s{font-size:calc(var(--w,52px)*.24);margin-top:1px}
+.carta .pip{
+  position:absolute;right:5px;bottom:2px;
+  font-size:calc(var(--w,52px)*.52);line-height:1;opacity:.9;
+}
+.carta.roja{color:var(--rojo)}
+.carta.sel{transform:translateY(-13px);box-shadow:0 0 0 2px var(--oro),0 12px 18px rgba(0,0,0,.55)}
+.carta.nueva::after{box-shadow:inset 0 0 0 2px var(--oro)}
+.carta.tenue{opacity:.3}
+
+.dorso{
+  background:
+    repeating-linear-gradient(45deg,rgba(216,178,90,.16) 0 2px,transparent 2px 5px),
+    repeating-linear-gradient(-45deg,rgba(216,178,90,.16) 0 2px,transparent 2px 5px),
+    linear-gradient(158deg,#2f4a38,#1e3125);
+  color:var(--oro);
+}
+.dorso::after{box-shadow:inset 0 0 0 1px rgba(216,178,90,.3),inset 0 0 0 4px rgba(0,0,0,.18)}
+.dorso .cnt{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font:600 calc(var(--w,52px)*.30) var(--display);color:var(--oro);opacity:.92;
+}
+
+/* ══════ asiento del fondo (rivales) ══════ */
+.asientos{display:flex;gap:9px;padding:8px 10px 4px;align-items:flex-start;justify-content:center}
+.asiento{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.susjuegos{
+  display:flex;gap:5px;align-items:flex-start;width:100%;
+  overflow-x:auto;scrollbar-width:none;padding-bottom:2px;
+}
+.susjuegos::-webkit-scrollbar{display:none}
+.susjuegos:empty{display:none}
+.abanico{display:flex;height:calc(var(--ah) - 4px);align-items:flex-start;justify-content:center}
+.abanico .carta{--w:var(--aw);--h:var(--ah);margin-left:calc(-1 * var(--aw) + 9px);transform-origin:bottom center}
+.abanico .carta:first-child{margin-left:0}
+.placa{
+  display:flex;align-items:center;gap:5px;white-space:nowrap;max-width:100%;
+  border:1px solid var(--linea);border-radius:16px;padding:3px 8px;
+  background:rgba(0,0,0,.26);font-size:12px;
+}
+.placa b{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pumbita{background:var(--oro);color:#2b2210;font:700 9.5px var(--sans);
+  border-radius:8px;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em}
+#mesa.j4 .placa{font-size:11px;padding:2px 7px;gap:4px}
+#mesa.j4 .placa .p{font-size:12px}
+.placa b{font-weight:600}
+.placa .p{font-family:var(--display);font-size:13.5px;color:var(--oro)}
+.placa.activo{border-color:var(--oro);box-shadow:0 0 0 1px rgba(216,178,90,.3)}
+
+/* ══════ juegos ══════ */
+.zonaJuegos{display:flex;align-items:stretch;gap:8px;padding:4px 10px;min-height:0}
+.lateral{
+  display:flex;flex-direction:column;gap:4px;flex:0 0 auto;
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+  padding-right:7px;border-right:1px solid var(--linea);
+}
+.lateral:empty{display:none}
+.lateral::-webkit-scrollbar{display:none}
+.lateral::-webkit-scrollbar{display:none}
+.cerrada{
+  display:flex;align-items:center;gap:5px;flex:0 0 auto;
+  padding:2px 6px 2px 3px;border-radius:7px;background:rgba(0,0,0,.2);
+  box-shadow:inset 0 0 0 1px var(--linea);
+}
+.lateral .taquito{width:calc(var(--tw) - 5px);height:calc(var(--th) - 7px)}
+.lateral .taquito>*{--w:calc(var(--tw) - 5px);--h:calc(var(--th) - 7px)}
+.cerrada .et{font:600 11px var(--sans);color:var(--apag);letter-spacing:.02em;line-height:1.3}
+.cerrada .et i{font:400 9.5px var(--sans);font-style:normal;opacity:.75}
+.cerrada.limpia{box-shadow:inset 0 0 0 1px var(--oro-hondo);background:rgba(216,178,90,.1)}
+.cerrada.limpia .et{color:var(--oro)}
+.cerrada.sucia .et{color:var(--apag)}
+.cerrada.flor .et{color:#d99a90}
+.taquito{position:relative;width:var(--tw);height:var(--th);flex:0 0 auto}
+.taquito>*{position:absolute;inset:0;--w:var(--tw);--h:var(--th)}
+.taquito .borde{background:linear-gradient(#f2ecdd,#ddd4bf)}
+.taquito .b1{transform:translate(1.5px,-1.5px) rotate(1.4deg)}
+.taquito .b2{transform:translate(3px,-3px) rotate(2.8deg)}
+.taquito .b3{transform:translate(4.5px,-4.5px) rotate(4.2deg)}
+.taquito .corona{z-index:3}
+
+/* escaleras en curso: cartas de arriba abajo, ocupan mucho menos de ancho */
+.tira.juegos{align-items:flex-start;gap:7px;padding:0}
+.juego{
+  flex:0 0 auto;border-radius:8px;padding:4px 5px 5px;
+  background:rgba(0,0,0,.18);box-shadow:inset 0 0 0 1px var(--linea);
+}
+.juego .tit{font-size:10px;color:var(--apag);margin-bottom:3px;text-align:center;white-space:nowrap}
+.juego .cs{display:flex;flex-direction:column;align-items:center}
+.juego .cs .carta{--w:var(--jw);--h:var(--jh);margin-top:calc(15px - var(--jh))}
+.juego .cs .carta:first-child{margin-top:0}
+.juego.mal{box-shadow:inset 0 0 0 1px var(--rojo)}
+.juego.mal .tit{color:#e08b7f}
+.hueco{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;text-align:center;
+  border:1px dashed var(--linea);border-radius:8px;
+  width:52px;min-height:60px;padding:5px;font-size:10px;color:var(--apag);line-height:1.25;
+}
+.rotulo{
+  flex:0 0 auto;align-self:center;writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:9.5px;color:var(--apag);letter-spacing:.06em;text-transform:lowercase;
+}
+.nada{align-self:center;color:var(--apag);font-size:11px;padding:6px 2px}
+
+/* ══════ río central ══════ */
+.rio{
+  flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:34px;
+  padding:4px 12px;
+}
+.pila{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.stack{position:relative;--w:var(--pw);--h:var(--ph);width:var(--w);height:var(--h);overflow:visible}
+.stack .cruzada{
+  box-shadow:0 2px 6px rgba(0,0,0,.5),0 0 0 1px rgba(216,178,90,.55);
+  z-index:1;                    /* enterrado: solo asoma por los lados */
+}
+.stack .cruzada.arriba{z-index:4}   /* salvo que sea la propia tapa */
+.stack .tapa{z-index:3}
+.pila{overflow:visible}
+.stack>.carta{position:absolute;inset:0;--w:var(--pw);--h:var(--ph)}
+.stack .z1{transform:translate(4px,4px)}
+.stack .z2{transform:translate(2px,2px)}
+.marca{
+  position:absolute;top:-9px;right:-11px;z-index:6;
+  background:linear-gradient(#e6c470,#c39c40);color:#2b2210;
+  font:700 11px var(--sans);border-radius:11px;padding:1px 7px;
+  box-shadow:0 2px 4px rgba(0,0,0,.4);
+}
+.pie{font-size:11px;color:var(--apag);text-align:center;max-width:120px;min-height:28px}
+
+/* ══════ mi mano ══════ */
+.mimano{
+  background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.4));
+  border-top:1px solid var(--linea);
+  padding:10px 0 calc(11px + env(safe-area-inset-bottom));
+}
+.mano{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;padding:0 10px}
+.monton{position:relative;isolation:isolate}
+.mano .carta{--w:var(--mw);--h:var(--mh)}
+.monton .prof{position:absolute;inset:0;z-index:0;filter:brightness(.9)}
+.monton .prof.a{transform:translate(4px,4px)}
+.monton .prof.b{transform:translate(2px,2px)}
+.monton .frente{position:relative;z-index:2}
+.badge{
+  position:absolute;bottom:-4px;right:-5px;z-index:6;
+  background:#16211a;color:var(--oro);border:1px solid var(--oro-hondo);
+  font:700 10.5px var(--sans);border-radius:9px;padding:0 5px;
+}
+
+/* ══════ objetivos ══════ */
+.acepta{box-shadow:inset 0 0 0 2px var(--oro),0 0 14px rgba(216,178,90,.28)!important}
+.hueco.acepta{border-color:var(--oro);border-style:solid;color:var(--oro)}
+.encima{background:rgba(216,178,90,.26)!important}
+.pila.acepta{box-shadow:none!important}
+.pila.acepta .stack::after{
+  content:"";position:absolute;inset:-8px;border:2px solid var(--oro);border-radius:11px;
+  box-shadow:0 0 16px rgba(216,178,90,.35);
+}
+.pila.encima .stack::after{background:rgba(216,178,90,.24)}
+.vuelo{
+  will-change:transform;
+  position:fixed;z-index:200;pointer-events:none;transform-origin:top left;
+  transition-property:transform,opacity;transition-timing-function:cubic-bezier(.2,.75,.3,1);
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));
+}
+#fantasma{
+  position:fixed;z-index:99;pointer-events:none;
+  transform:translate(-50%,-64%) rotate(-5deg) scale(1.16);
+  filter:drop-shadow(0 12px 16px rgba(0,0,0,.6));
+}
+
+/* ══════ avisos y capas ══════ */
+.mensajera{
+  display:flex;align-items:center;justify-content:center;
+  min-height:30px;padding:0 14px;
+}
+#aviso{
+  font-size:12.5px;text-align:center;color:var(--apag);
+  border-left:2px solid var(--oro);padding:3px 10px;
+  background:rgba(0,0,0,.3);border-radius:0 4px 4px 0;max-width:100%;
+}
+#aviso.salida{border-left-color:var(--oro);color:var(--oro)}
+#aviso.err{border-left-color:var(--rojo);color:#eab9b1}
+#capa.pregunta{display:flex;align-items:center;justify-content:center}
+.cuadro{
+  background:linear-gradient(#26332b,#1b241e);border:1px solid var(--linea);
+  border-radius:12px;padding:22px 20px;max-width:340px;width:100%;text-align:center;
+  box-shadow:0 18px 40px rgba(0,0,0,.6);
+}
+.previa{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:20px}
+.previa .mas{font:600 20px var(--display);color:var(--apag)}
+.previa .interro{
+  width:52px;height:73px;border:2px dashed var(--oro);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font:600 26px var(--display);color:var(--oro);
+}
+.abierta{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.quien{align-self:center;font:600 9.5px var(--sans);color:var(--apag);
+  writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.05em;
+  padding:0 1px;border-left:1px solid var(--linea)}
+.ops{display:flex;gap:14px;justify-content:center}
+.op{
+  background:transparent;border:1px solid var(--linea);border-radius:9px;
+  padding:10px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;
+  cursor:pointer;color:var(--hueso);
+}
+.op:active{border-color:var(--oro);background:rgba(216,178,90,.14)}
+.anuncio{
+  position:fixed;left:50%;top:44%;z-index:300;pointer-events:none;
+  transform:translate(-50%,-50%);
+  font:700 clamp(46px,16vw,92px)/1 var(--display);
+  letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;
+}
+.anuncio.pumba{color:var(--oro);
+  text-shadow:0 0 26px rgba(216,178,90,.55),0 4px 0 rgba(0,0,0,.5),0 8px 22px rgba(0,0,0,.7)}
+.anuncio.tapon{color:#d8564a;
+  text-shadow:0 0 26px rgba(176,48,40,.55),0 4px 0 rgba(0,0,0,.5),0 8px 22px rgba(0,0,0,.7)}
+#capa{
+  position:fixed;inset:0;z-index:80;background:rgba(10,15,11,.9);
+  padding:26px 16px;overflow-y:auto;
+}
+
+/* ══════ pantallas ══════ */
+.pantalla{
+  height:100dvh;overflow-y:auto;padding:26px 22px 40px;max-width:520px;margin:0 auto;
+  background:radial-gradient(ellipse 90% 50% at 50% 30%,var(--fieltro-2),var(--fieltro-4));
+}
+h1{font:600 34px/1.1 var(--display);margin-bottom:5px}
+h2{font:600 20px var(--display)}
+.btn{background:linear-gradient(#e6c470,#c39c40);color:#2b2210;border:none;
+     padding:13px 20px;border-radius:6px;font:600 15px var(--sans);cursor:pointer;
+     box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.btn.claro{background:var(--hueso);color:var(--tinta)}
+.btn.ghost{background:transparent;color:var(--apag);border:1px solid var(--linea);box-shadow:none}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{background:rgba(0,0,0,.2);border:1px solid var(--linea);color:var(--hueso);
+  padding:9px 15px;border-radius:6px;font:15px var(--sans);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--hueso);color:var(--tinta);border-color:var(--hueso)}
+.campo{margin-bottom:17px}
+label{display:block;font-size:12px;color:var(--apag);margin-bottom:6px}
+input{font:16px var(--sans);padding:10px;width:100%;background:rgba(0,0,0,.25);
+  color:var(--hueso);border:1px solid var(--linea);border-radius:6px;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:6px 2px;text-align:left;border-bottom:1px solid var(--linea);font-weight:400}
+th{font-weight:600}
+td.n{text-align:right;font-family:var(--display);font-size:16px}
+.gordo{font:34px var(--display);color:var(--oro);line-height:1}
+:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<body>
+<div id="app"></div>
+<script src="/motor.js"></script>
+<script>
+"use strict";
+/* Cliente de canastón online. No tiene reglas propias: dibuja lo que
+   manda el servidor y le devuelve acciones. Usa Motor solo para saber
+   dónde cabe una carta y así iluminar destinos sin preguntar. */
+
+const app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const {NR, esMono, esJoker, esTresNegro, valor, nombre, cabe, claveDe,
+       etiquetaClave, esCanasta, cartasParaAbrir} = Motor;
+
+let ws = null, V = null, INFO = null, sel = null, aviso = "", errado = false;
+let sala = null, asiento = null, ficha = null, expandida = null;
+
+/* ── conexión ── */
+function conectar(alAbrir){
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(proto + "//" + location.host);
+  ws.onopen = alAbrir;
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.tipo === "sentado"){
+      sala = m.sala; asiento = m.asiento; ficha = m.ficha;
+      try { localStorage.setItem("canaston", JSON.stringify({sala, ficha})); } catch {}
+      history.replaceState(null, "", "?sala=" + sala);
+    }
+    if (m.tipo === "estado"){ INFO = m; V = m.vista; pintar(); }
+    if (m.tipo === "error" || m.tipo === "rechazo"){ avisar(m.mensaje, true); pintar(); }
+  };
+  ws.onclose = () => { avisar("Sin conexión, reintentando…", true); pintar(); setTimeout(reconectar, 1500); };
+}
+function reconectar(){ conectar(() => envio({tipo:"unirse", sala, ficha})); }
+const envio = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
+const accion = a => { sel = null; envio({tipo:"accion", accion:a}); };
+const avisar = (t,e) => { aviso = t; errado = !!e; };
+
+/* ── vestíbulo ── */
+let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000};
+function vistaEntrada(){
+  const invitado = new URLSearchParams(location.search).get("sala");
+  app.innerHTML = `<div class="pantalla">
+    <h1>Canastón</h1>
+    <p class="meta" style="margin-bottom:24px">${invitado ? "Te han invitado a la sala "+esc(invitado) : "Crea una sala y comparte el enlace"}</p>
+    <div class="campo"><label>Tu nombre</label>
+      <input id="nom" value="${esc(cfg.nombre)}" placeholder="Tu nombre" maxlength="14"></div>
+    ${invitado ? "" : `
+    <div class="campo"><label>Jugadores</label>
+      <div class="seg">${[2,3,4].map(k=>`<button aria-pressed="${cfg.plazas===k}" onclick="setP(${k})">${k}</button>`).join("")}</div></div>
+    ${cfg.plazas===4 ? `<div class="campo"><label>Modalidad</label><div class="seg">
+      <button aria-pressed="${!cfg.parejas}" onclick="setPar(false)">Individual</button>
+      <button aria-pressed="${cfg.parejas}" onclick="setPar(true)">Por parejas</button></div></div>` : ""}
+    <div class="campo"><label>Se gana a</label>
+      <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfg.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>`}
+    <button class="btn" onclick="entrar('${invitado||""}')">${invitado ? "Entrar" : "Crear sala"}</button>
+    ${aviso ? `<p class="meta" style="margin-top:16px;color:#e0a29a">${esc(aviso)}</p>` : ""}
+  </div>`;
+}
+function setP(k){ cfg.plazas=k; if(k!==4)cfg.parejas=false; pintar(); }
+function setPar(v){ cfg.parejas=v; pintar(); }
+function setO(v){ cfg.objetivo=v; pintar(); }
+function entrar(codigo){
+  cfg.nombre = (document.getElementById("nom").value || "").trim() || "Jugador";
+  const ir = () => codigo
+    ? envio({tipo:"unirse", sala:codigo, nombre:cfg.nombre})
+    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo});
+  ws && ws.readyState === 1 ? ir() : conectar(ir);
+}
+
+/* ── sala de espera ── */
+function vistaEspera(){
+  const enlace = location.origin + "/?sala=" + sala;
+  app.innerHTML = `<div class="pantalla">
+    <h1>Sala ${esc(sala)}</h1>
+    <p class="meta" style="margin-bottom:20px">Faltan ${INFO.plazas - INFO.jugadores.filter(Boolean).length} por entrar</p>
+    ${INFO.jugadores.map((j,i)=>`<div class="placa" style="margin-bottom:7px;display:inline-flex">
+      <b>${j?esc(j.nombre):"—"}</b><span class="meta">asiento ${i+1}${j&&!j.conectado?" · desconectado":""}</span></div><br>`).join("")}
+    <div class="campo" style="margin-top:22px"><label>Enlace de invitación</label>
+      <input readonly value="${esc(enlace)}" onclick="this.select()"></div>
+    <button class="btn" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>
+  </div>`;
+}
+function copiar(t){
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject())
+    .then(()=>{avisar("Enlace copiado");pintar();})
+    .catch(()=>{avisar("Cópialo a mano desde el recuadro");pintar();});
+}
+
+/* ── cartas ── */
+function htmlCarta(c,o={}){
+  const cls=["carta"];
+  if(esJoker(c)||(c.palo&&c.palo.roja))cls.push("roja");
+  if(o.sel)cls.push("sel");
+  if(o.cls)cls.push(o.cls);
+  const r=esJoker(c)?"★":NR[c.rango], p=esJoker(c)?"":c.palo.c;
+  return `<div class="${cls.join(" ")}" ${o.src?`data-src="${o.src}" data-id="${c.id}"`:""} style="${o.style||""}">
+    <span class="ix">${r}<span class="s">${p||"★"}</span></span>
+    <span class="pip">${p||"★"}</span></div>`;
+}
+const htmlDorso=(t,st)=>`<div class="carta dorso" style="${st||""}">${t?`<span class="cnt">${t}</span>`:""}</div>`;
+function abanico(n){
+  const v=Math.min(n, V.jugadores.length>=4?5:V.jugadores.length===3?7:9);
+  let h="";
+  for(let i=0;i<v;i++){const t=(i-(v-1)/2)*4.5;
+    h+=htmlDorso("",`transform:rotate(${t.toFixed(1)}deg) translateY(${Math.abs(t)*.16}px)`);}
+  return h;
+}
+function coronaDe(e){
+  const roja=x=>esJoker(x)||(x.palo&&x.palo.roja), negra=x=>x.palo&&!x.palo.roja;
+  let cand=e.limpia?e.cartas.filter(roja):e.cartas.filter(negra);
+  if(!cand.length)cand=e.cartas.slice();
+  return cand[0]||e.cartas[0];
+}
+function juegosDe(g,propio){
+  const lat=[],tira=[];
+  if(g.flores)
+    lat.push(`<div class="cerrada flor"><div class="taquito">
+      ${htmlCarta({id:-1,rango:3,palo:Motor.PALOS[1]},{cls:"corona"})}</div>
+      <span class="et">${g.flores*100}</span></div>`);
+  g.escaleras.forEach(e=>{
+    if(e.canasta){
+      lat.push(`<div class="cerrada ${e.limpia?"limpia":"sucia"}" ${propio?`data-exp="${e.indice}"`:""}>
+        <div class="taquito"><div class="carta borde b3"></div><div class="carta borde b2"></div>
+          <div class="carta borde b1"></div>${htmlCarta(coronaDe(e),{cls:"corona"})}</div>
+        <span class="et">${e.bono}<br><i>${e.limpia?"limpia":"sucia"}</i></span></div>`);
+    } else {
+      tira.push(`<div class="juego" ${propio?`data-drop="juego" data-i="${e.indice}"`:""}>
+        <div class="tit">${etiquetaClave(e.clave)}·${e.cartas.length}</div>
+        <div class="cs">${e.cartas.map(x=>htmlCarta(x)).join("")}</div></div>`);
+    }
+  });
+  if(propio&&V.yo.esMiTurno)tira.push(`<div class="hueco" data-drop="nuevo">+</div>`);
+  return {lat,tira};
+}
+const montones = mano => {
+  const m=new Map();
+  mano.forEach(c=>{const k=esJoker(c)?0:c.rango; if(!m.has(k))m.set(k,[]); m.get(k).push(c);});
+  const orden=r=>r===0?102:r===2?101:r===3?0:r;
+  return [...m.entries()].sort((a,b)=>orden(a[0])-orden(b[0]));
+};
+
+/* ── mesa ── */
+function vistaMesa(){
+  const mio=V.grupos[V.miGrupo], otros=V.grupos.filter(g=>g.id!==V.miGrupo);
+  const miTurno=V.yo.esMiTurno, robando=miTurno&&V.yo.faseTurno==="robar";
+  const {lat,tira}=juegosDe(mio,miTurno);
+  const quien=V.jugadores.find(j=>j.turno);
+
+  app.innerHTML=`<div id="mesa" class="j${V.jugadores.length}">
+    <div class="banda asientos">
+      ${otros.map(g=>{
+        const js=V.jugadores.filter(j=>{
+          const gr=V.grupos.find(x=>x.id===g.id);
+          return gr && V.jugadores.length===V.grupos.length ? j.asiento===g.id : true;
+        });
+        const cartas=V.jugadores.filter(j=>j.asiento!==V.asiento&&perteneceA(j,g)).reduce((t,j)=>t+j.cartas,0);
+        const pumba=V.jugadores.some(j=>perteneceA(j,g)&&j.pumba);
+        const o=juegosDe(g,false);
+        return `<div class="asiento">
+          <div class="abanico">${abanico(cartas)}</div>
+          <div class="placa${g.id===(quien&&grupoDeAsiento(quien.asiento))?" activo":""}">
+            <b>${esc(g.nombre)}</b><span class="p">${g.puntos.toLocaleString("es")}</span>
+            <span class="meta">${cartas}</span>${pumba?`<span class="pumbita">pumba</span>`:""}</div>
+          <div class="susjuegos">${o.lat.concat(o.tira).join("")}</div>
+        </div>`;
+      }).join("")}
+    </div>
+
+    <div class="rio">
+      <div class="pila" data-drop="taco" ${robando?'data-src="taco"':""}>
+        <div class="stack">${htmlDorso("","transform:translate(4px,4px)")}
+          ${htmlDorso("","transform:translate(2px,2px)")}${htmlDorso(V.taco)}</div>
+        <span class="pie">${V.volteos?"volteado"+(V.volteos>1?" ×"+V.volteos:""):""}</span>
+      </div>
+      <div class="pila" data-drop="pozo" ${robando&&V.pozo.tapa?'data-src="pozo"':""}>
+        <div class="stack">
+          ${V.yo.pozoRetenido?htmlDorso(V.yo.pozoRetenido,"opacity:.8"):
+            (V.pozo.tapadas?htmlDorso("","transform:translate(4px,4px)")+htmlDorso("","transform:translate(2px,2px)"):"")
+            +V.pozo.congeladores.filter(c=>!V.pozo.tapa||c.id!==V.pozo.tapa.id)
+               .map((c,k)=>htmlCarta(c,{cls:"cruzada",style:`transform:rotate(90deg) translateX(${k*5-4}px)`})).join("")
+            +(V.pozo.tapa?htmlCarta(V.pozo.tapa,{cls:esMono(V.pozo.tapa)?"cruzada arriba":"tapa",
+                style:esMono(V.pozo.tapa)?"transform:rotate(90deg)":""}):htmlDorso("","opacity:.3"))}
+          ${!V.yo.pozoRetenido&&V.pozo.total?`<span class="marca">${V.pozo.total}</span>`:""}
+        </div>
+        <span class="pie">${V.yo.pozoRetenido?"apartado":miTurno?esc(pie(V.pozo.estado)):""}</span>
+      </div>
+    </div>
+
+    <div class="banda zonaJuegos">
+      <div class="lateral">${lat.join("")}</div>
+      <div class="tira juegos">${tira.join("")}</div>
+    </div>
+
+    <div class="banda mensajera">
+      ${aviso?`<span id="aviso" class="${errado?"err":""}">${esc(aviso)}</span>`
+       :(!mio.abierto&&miTurno&&V.yo.puntosDelTurno>0
+         ?`<span id="aviso" class="salida">salida ${V.yo.puntosDelTurno}/${mio.minimo}</span>`
+         :(!miTurno?`<span id="aviso">turno de ${esc(quien?quien.nombre:"")}</span>`:""))}
+    </div>
+
+    <div class="banda mimano" data-drop="mano">
+      <div style="display:flex;justify-content:center;gap:9px;margin-bottom:8px;align-items:center">
+        <span class="placa activo"><b>${esc(V.yo.nombre)}</b>
+          <span class="p">${mio.puntos.toLocaleString("es")}</span></span>
+        <span class="meta">${mio.abierto?(mio.canastas===1?"1 canasta":mio.canastas+" canastas"):"salida "+mio.minimo}</span>
+      </div>
+      <div class="mano">
+        ${montones(V.yo.mano).map(([k,cs])=>{
+          const c=cs[0];
+          return `<div class="monton" data-rango="${k}">
+            ${cs.length>2?`<div class="carta prof a"></div>`:""}
+            ${cs.length>1?`<div class="carta prof b"></div>`:""}
+            ${htmlCarta(c,{src:"mano",sel:sel===c.id,cls:"frente"})}
+            ${cs.length>1?`<span class="badge">${cs.length}</span>`:""}</div>`;
+        }).join("")}
+      </div>
+    </div>
+  </div>
+  ${V.yo.pregunta?capaPregunta():""}
+  ${expandida!=null?capaCanasta():""}`;
+  if(sel)marcar(sel);
+  activar();
+}
+const pie = est => ({taponado:"taponado", congelado:"congelado",
+  "faltan iguales":"", "no llegas al mínimo":"no llegas al mínimo",
+  disponible:"", "vacío":""}[est] ?? "");
+const perteneceA = (j,g) => grupoDeAsiento(j.asiento) === g.id;
+function grupoDeAsiento(a){
+  const g = V.grupos.find(x => x.asientosCache ? x.asientosCache.includes(a) : false);
+  if (g) return g.id;
+  // sin parejas cada asiento es su grupo; con parejas, pares e impares
+  return V.grupos.length === V.jugadores.length ? a : (a % 2);
+}
+
+function capaPregunta(){
+  const q=V.yo.pregunta, vistos=new Set(), ops=[];
+  V.yo.mano.filter(esMono).forEach(c=>{
+    const t=esJoker(c)?"joker":"dos";
+    if(vistos.has(t))return; vistos.add(t); ops.push(c);
+  });
+  const nat=V.yo.mano.filter(c=>c.rango===q.rango&&!esMono(c)).slice(0,2);
+  return `<div id="capa" class="pregunta"><div class="cuadro">
+    <h2 style="margin-bottom:16px">¿Con qué comodín?</h2>
+    <div class="previa">${nat.map(c=>htmlCarta(c)).join("")}
+      <span class="mas">+</span><span class="interro">?</span></div>
+    <div class="ops">${ops.map(c=>`<button class="op" onclick="accion({tipo:'elegirMono',carta:${c.id}})">
+      ${htmlCarta(c)}<span class="meta">${valor(c)}</span></button>`).join("")}</div>
+    <button class="btn ghost" style="margin-top:18px"
+      onclick="accion({tipo:'elegirMono',carta:null})">Cancelar</button>
+  </div></div>`;
+}
+function capaCanasta(){
+  const e=V.grupos[V.miGrupo].escaleras.find(x=>x.indice===expandida);
+  if(!e)return "";
+  return `<div id="capa" class="pregunta" onclick="expandida=null;pintar()"><div class="cuadro">
+    <h2>${etiquetaClave(e.clave)} · ${e.limpia?"limpia":"sucia"}</h2>
+    <p class="meta" style="margin:4px 0 16px">${e.cartas.length} cartas · ${e.bono} pts</p>
+    <div class="abierta">${e.cartas.map(x=>htmlCarta(x)).join("")}</div>
+  </div></div>`;
+}
+
+/* ── recuento ── */
+function vistaFin(){
+  const f=V.fin, gano=V.fase==="finPartida";
+  const nom=id=>(V.grupos.find(g=>g.id===id)||{}).nombre||"";
+  app.innerHTML=`<div class="pantalla">
+    <h1>${gano?esc(nom(f.ganador))+" gana la partida":"Recuento"}</h1>
+    <p class="meta" style="margin-bottom:18px">${esc(f.motivo)} · se juega a ${INFO.objetivo.toLocaleString("es")}</p>
+    ${f.resultados.map(r=>`<div style="border-top:1px solid var(--linea);padding-top:13px;margin-top:17px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <h2>${esc(r.nombre)}</h2>
+        <span class="gordo">${r.total>=0?"+":""}${r.total.toLocaleString("es")}</span></div>
+      <table style="margin-top:9px">
+        ${r.det.map(d=>`<tr><td>${esc(d[0])}</td><td class="n">${d[1].toLocaleString("es")}</td></tr>`).join("")}
+        <tr><th>Acumulado</th><td class="n"><strong>${r.acumulado.toLocaleString("es")}</strong></td></tr>
+      </table></div>`).join("")}
+    ${gano?"":`<div style="margin-top:26px">
+      <button class="btn" onclick="accion({tipo:'siguienteReparto'})">Repartir de nuevo</button></div>`}
+  </div>`;
+}
+
+/* ── anuncios ── */
+let vistos=0;
+function anuncios(){
+  if(!V||!V.sucesos)return;
+  V.sucesos.forEach(s=>{
+    if(s.tipo==="pumba")soltar("pumba","pumba");
+    if(s.tipo==="tapon")soltar("tapón","tapon");
+  });
+}
+function soltar(txt,tipo){
+  const el=document.createElement("div");
+  el.className="anuncio "+tipo; el.textContent=txt;
+  document.body.appendChild(el);
+  if(!el.animate)return setTimeout(()=>el.remove(),1100);
+  el.animate([
+    {transform:"translate(-50%,-50%) scale(.35) rotate(-16deg)",opacity:0},
+    {transform:"translate(-50%,-50%) scale(1.14) rotate(-5deg)",opacity:1,offset:.22},
+    {transform:"translate(-50%,-50%) scale(1) rotate(-5deg)",opacity:1,offset:.68},
+    {transform:"translate(-50%,-50%) scale(1.45) rotate(-5deg)",opacity:0}
+  ],{duration:1250,easing:"cubic-bezier(.2,.9,.3,1)",fill:"both"}).onfinish=()=>el.remove();
+  setTimeout(()=>el.remove(),1700);
+}
+
+/* ── interacción ── */
+function grupoShim(){
+  const g=V.grupos[V.miGrupo];
+  return {combis:g.escaleras.map(e=>({clave:e.clave,cartas:e.cartas,limpia:e.canasta?e.limpia:undefined}))};
+}
+function destinos(id){
+  const carta=V.yo.mano.find(c=>c.id===id);
+  if(!carta||!V.yo.esMiTurno)return [];
+  const g=grupoShim();
+  const z=V.yo.faseTurno==="jugar"?["pozo"]:[];
+  g.combis.forEach((c,i)=>{ if(cabe(c.clave,c.cartas,carta,g))z.push("juego:"+i); });
+  const yaHay=g.combis.some(c=>c.clave===claveDe(carta));
+  if(!yaHay&&cartasParaAbrir(carta,V.yo.mano).length)z.push("nuevo");
+  return z;
+}
+function marcar(id){
+  const z=destinos(id);
+  document.querySelectorAll("[data-drop]").forEach(el=>{
+    const t=el.dataset.drop, k=t==="juego"?"juego:"+el.dataset.i:t;
+    if(z.includes(k))el.classList.add("acepta");
+  });
+}
+function activar(){
+  document.querySelectorAll("[data-src]").forEach(el=>el.addEventListener("pointerdown",abajo,{passive:false}));
+  document.querySelectorAll("[data-drop]").forEach(el=>el.addEventListener("click",tocarZona));
+  document.querySelectorAll("[data-exp]").forEach(el=>
+    el.addEventListener("click",()=>{expandida=+el.dataset.exp;pintar();}));
+}
+function tocarZona(e){
+  if(sel==null)return;
+  const el=e.currentTarget;
+  if(!el.classList.contains("acepta"))return;
+  e.stopPropagation();
+  soltarEn(el.dataset.drop, el.dataset.i, sel);
+}
+function soltarEn(t,i,id){
+  if(t==="pozo")accion({tipo:"descartar",carta:id});
+  else if(t==="juego")accion({tipo:"añadir",carta:id,escalera:+i});
+  else if(t==="nuevo")accion({tipo:"abrir",carta:id});
+}
+let arr=null,movido=false;
+function abajo(e){
+  const el=e.currentTarget,src=el.dataset.src,id=+el.dataset.id;
+  e.preventDefault();
+  if(src==="taco")return accion({tipo:"robar"});
+  if(src==="pozo")return accion({tipo:"cogerPozo"});
+  if(!V.yo.esMiTurno)return;
+  movido=false;
+  arr={el,id,fantasma:null,encima:null,x0:e.clientX,y0:e.clientY};
+  addEventListener("pointermove",mover,{passive:false});
+  addEventListener("pointerup",arriba);
+  addEventListener("pointercancel",arriba);
+}
+function mover(e){
+  if(!arr)return;
+  if(!movido&&Math.hypot(e.clientX-arr.x0,e.clientY-arr.y0)<9)return;
+  e.preventDefault();
+  if(!movido){
+    movido=true;
+    const r=arr.el.getBoundingClientRect(), f=arr.el.cloneNode(true);
+    f.id="fantasma"; f.classList.remove("sel");
+    f.style.width=r.width+"px"; f.style.height=r.height+"px";
+    document.body.appendChild(f); arr.fantasma=f;
+    arr.el.classList.add("tenue"); marcar(arr.id);
+  }
+  arr.fantasma.style.left=e.clientX+"px";
+  arr.fantasma.style.top=e.clientY+"px";
+  const bajo=document.elementFromPoint(e.clientX,e.clientY);
+  const z=bajo&&bajo.closest?bajo.closest("[data-drop]"):null;
+  if(arr.encima&&arr.encima!==z)arr.encima.classList.remove("encima");
+  if(z&&z.classList.contains("acepta")){z.classList.add("encima");arr.encima=z;}
+  else arr.encima=null;
+}
+function arriba(){
+  if(!arr)return;
+  removeEventListener("pointermove",mover);
+  removeEventListener("pointerup",arriba);
+  removeEventListener("pointercancel",arriba);
+  const {id,encima,fantasma,el}=arr; arr=null;
+  if(fantasma)fantasma.remove();
+  el.classList.remove("tenue");
+  if(!movido){ sel=(sel===id)?null:id; return pintar(); }
+  document.querySelectorAll(".acepta,.encima").forEach(x=>x.classList.remove("acepta","encima"));
+  if(encima)soltarEn(encima.dataset.drop,encima.dataset.i,id);
+  else pintar();
+}
+
+/* ── pintado ── */
+function pintar(){
+  if(!INFO)return vistaEntrada();
+  if(!V)return vistaEspera();
+  if(V.fase==="finReparto"||V.fase==="finPartida")vistaFin();
+  else vistaMesa();
+  anuncios();
+  aviso="";
+}
+
+/* ── arranque: si hay ficha guardada, se recupera el asiento ── */
+(function(){
+  let g=null;
+  try { g=JSON.parse(localStorage.getItem("canaston")||"null"); } catch {}
+  const invitado=new URLSearchParams(location.search).get("sala");
+  if(g&&g.sala&&g.ficha&&(!invitado||invitado===g.sala)){
+    sala=g.sala; ficha=g.ficha;
+    conectar(()=>envio({tipo:"unirse",sala,ficha}));
+  }
+  pintar();
+})();
+
+</script>
+</body>
