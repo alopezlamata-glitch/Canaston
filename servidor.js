@@ -49,7 +49,8 @@ function nuevaSala(cfg){
     cfg: {
       plazas: Math.min(4, Math.max(2, cfg.plazas|0 || 2)),
       parejas: !!cfg.parejas,
-      objetivo: cfg.objetivo === 6000 ? 6000 : 10000
+      objetivo: cfg.objetivo === 6000 ? 6000 : 10000,
+      publica: !!cfg.publica
     },
     asientos: [],          // {nombre, ficha, ws}
     estado: null,
@@ -129,6 +130,20 @@ wss.on("connection", ws => {
       ws.send(JSON.stringify({tipo:"sentado", sala:sala.id, asiento:libre, ficha:f}));
       empezarSiEstaLlena(sala);
       return difundir(sala);
+    }
+
+    if (m.tipo === "listar"){
+      const lista = [...salas.values()]
+        .filter(s => s.cfg.publica && !s.estado && s.asientos.filter(Boolean).length < s.cfg.plazas)
+        .sort((a,b) => b.creada - a.creada)
+        .map(s => ({
+          sala: s.id,
+          jugadores: s.asientos.filter(Boolean).map(a => a.nombre),
+          plazas: s.cfg.plazas,
+          parejas: s.cfg.parejas,
+          objetivo: s.cfg.objetivo
+        }));
+      return ws.send(JSON.stringify({tipo:"salas", salas:lista}));
     }
 
     if (m.tipo === "accion"){

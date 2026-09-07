@@ -371,6 +371,10 @@ td.n{text-align:right;font-family:var(--display);font-size:16px}
 .resultado.ganador{box-shadow:inset 0 0 0 1px var(--oro-hondo);border-radius:10px;
   background:rgba(216,178,90,.06)}
 .codigo-sala{font-weight:700;letter-spacing:.12em;color:var(--oro)}
+.sala-item{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  border:1px solid var(--linea);border-radius:10px;padding:11px 13px;margin-bottom:8px;
+  background:rgba(0,0,0,.2)}
+.sala-item .btn{padding:8px 14px;font-size:13px;flex:0 0 auto}
 </style>
 <body>
 <div id="app"></div>
@@ -401,14 +405,17 @@ function conectar(alAbrir){
     const m = JSON.parse(ev.data);
     if (m.tipo === "sentado"){
       sala = m.sala; asiento = m.asiento; ficha = m.ficha;
+      clearInterval(pollingSalas); pollingSalas = null;
       try { localStorage.setItem("canaston", JSON.stringify({sala, ficha})); } catch {}
       history.replaceState(null, "", "?sala=" + sala);
     }
     if (m.tipo === "estado"){ INFO = m; V = m.vista; pintar(); }
+    if (m.tipo === "salas"){ salasPublicas = m.salas; pintar(); }
     if (m.tipo === "error" || m.tipo === "rechazo"){ avisar(m.mensaje, true); pintar(); }
     if (m.tipo === "salaCerrada"){
       try { localStorage.removeItem("canaston"); } catch {}
       sala = null; asiento = null; ficha = null; INFO = null; V = null;
+      pantallaInicial = "entrada";
       history.replaceState(null, "", location.pathname);
       if (m.motivo) avisar(m.motivo, true);
       pintar();
@@ -426,7 +433,8 @@ function abandonar(){
 }
 
 /* ── vestíbulo ── */
-let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000};
+let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:false};
+let pantallaInicial = "entrada", salasPublicas = [], pollingSalas = null;
 function vistaEntrada(){
   const invitado = new URLSearchParams(location.search).get("sala");
   app.innerHTML = `<div class="pantalla">
@@ -441,20 +449,70 @@ function vistaEntrada(){
       <button aria-pressed="${!cfg.parejas}" onclick="setPar(false)">Individual</button>
       <button aria-pressed="${cfg.parejas}" onclick="setPar(true)">Por parejas</button></div></div>` : ""}
     <div class="campo"><label>Se gana a</label>
-      <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfg.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>`}
+      <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfg.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
+    <div class="campo"><label>Quién puede verla</label>
+      <div class="seg">
+        <button aria-pressed="${!cfg.publica}" onclick="setPublica(false)">Privada</button>
+        <button aria-pressed="${cfg.publica}" onclick="setPublica(true)">Pública</button>
+      </div>
+      <p class="meta" style="margin-top:7px">${cfg.publica
+        ? "Cualquiera puede verla y unirse, sin enlace."
+        : "Solo entra quien tenga el enlace o el código."}</p>
+    </div>`}
     <button class="btn" onclick="entrar('${invitado||""}')">${invitado ? "Entrar" : "Crear sala"}</button>
+    ${invitado ? "" : `<p style="margin-top:18px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
+      onclick="verPublicas()">Ver salas públicas</button></p>`}
     ${aviso ? `<p class="meta" style="margin-top:16px;color:#e0a29a">${esc(aviso)}</p>` : ""}
   </div>`;
 }
 function setP(k){ cfg.plazas=k; if(k!==4)cfg.parejas=false; pintar(); }
 function setPar(v){ cfg.parejas=v; pintar(); }
 function setO(v){ cfg.objetivo=v; pintar(); }
+function setPublica(v){ cfg.publica=v; pintar(); }
 function entrar(codigo){
   cfg.nombre = (document.getElementById("nom").value || "").trim() || "Jugador";
   const ir = () => codigo
     ? envio({tipo:"unirse", sala:codigo, nombre:cfg.nombre})
-    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo});
+    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo, publica:cfg.publica});
   ws && ws.readyState === 1 ? ir() : conectar(ir);
+}
+
+/* ── salas públicas ── */
+function verPublicas(){
+  pantallaInicial = "publicas";
+  const ir = () => envio({tipo:"listar"});
+  ws && ws.readyState === 1 ? ir() : conectar(ir);
+  clearInterval(pollingSalas);
+  pollingSalas = setInterval(() => envio({tipo:"listar"}), 4000);
+  pintar();
+}
+function volverEntrada(){
+  pantallaInicial = "entrada";
+  clearInterval(pollingSalas); pollingSalas = null;
+  pintar();
+}
+function vistaSalasPublicas(){
+  app.innerHTML = `<div class="pantalla">
+    <button class="btn ghost" style="font-size:12.5px;padding:7px 12px;margin-bottom:18px"
+      onclick="volverEntrada()">← Volver</button>
+    <h1>Salas públicas</h1>
+    <p class="meta" style="margin-bottom:20px">Únete directamente, sin enlace</p>
+    <div class="campo"><label>Tu nombre</label>
+      <input id="nom" value="${esc(cfg.nombre)}" placeholder="Tu nombre" maxlength="14"></div>
+    ${salasPublicas.length===0
+      ? `<p class="meta">No hay ninguna sala pública abierta ahora mismo.</p>`
+      : salasPublicas.map((s,i)=>`<div class="sala-item fila-entra" style="animation-delay:${i*60}ms">
+          <span><b>${s.jugadores.length ? esc(s.jugadores.join(", ")) : "Sala vacía"}</b><br>
+            <span class="meta">${s.jugadores.length}/${s.plazas} · ${s.parejas?"parejas":"individual"} · a ${s.objetivo.toLocaleString("es")}</span></span>
+          <button class="btn" onclick="unirsePublica('${s.sala}')">Unirse</button>
+        </div>`).join("")}
+    ${aviso ? `<p class="meta" style="margin-top:16px;color:#e0a29a">${esc(aviso)}</p>` : ""}
+  </div>`;
+}
+function unirsePublica(codigo){
+  cfg.nombre = (document.getElementById("nom").value || "").trim() || "Jugador";
+  clearInterval(pollingSalas); pollingSalas = null;
+  envio({tipo:"unirse", sala:codigo, nombre:cfg.nombre});
 }
 
 /* ── sala de espera ── */
@@ -911,7 +969,7 @@ function sucesosPendientes(){
   return V.sucesos;
 }
 function pintar(){
-  if(!INFO)return vistaEntrada();
+  if(!INFO)return pantallaInicial==="publicas" ? vistaSalasPublicas() : vistaEntrada();
   if(!V)return vistaEspera();
   const sucesos=sucesosPendientes();
   if(V.fase==="finReparto"||V.fase==="finPartida")vistaFin();
