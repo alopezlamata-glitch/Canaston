@@ -336,6 +336,8 @@ body{
   to{opacity:1;transform:none}
 }
 .portada-botones{display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px}
+.refran{margin-top:24px;max-width:260px;text-align:center;font-style:italic;
+  font-size:12.5px;line-height:1.5;color:var(--apag);opacity:.85}
 @keyframes entraPantalla{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 h1{font:600 34px/1.1 var(--display);margin-bottom:5px}
 h2{font:600 20px var(--display)}
@@ -465,7 +467,29 @@ const opcionesBarajas = plazas => plazas===4 ? [3,4] : [2,3];
 let pantallaInicial = "inicio", salasPublicas = [], pollingSalas = null;
 
 /* ── portada ── */
+const REFRANES = [
+  "Suerte de principiante, suerte que no dura.",
+  "Al mal jugador, hasta las buenas cartas se le tuercen.",
+  "Quien no arriesga, no gana.",
+  "Cartas claras, amistades largas.",
+  "La suerte está echada.",
+  "A la tercera va la vencida.",
+  "Cada cual cuenta la baraja según le va en ella.",
+  "En el juego y en el amor, todo se vale.",
+  "A buen jugador, pocas cartas bastan.",
+  "Quien mucho baraja, poco reparte.",
+  "Comodín en mano, partida en la mano.",
+  "Quien guarda un comodín, guarda un tesoro.",
+  "El que pilla el pozo, pilla la suerte.",
+  "Más vale una limpia a tiempo que diez sucias en la mesa.",
+  "La flor roja no se planta: se recoge.",
+  "Al tapón cerrado no le entra suerte ajena.",
+  "Nunca digas canasta hasta tener las siete cartas.",
+  "El taco nunca miente, solo tarda en llegar.",
+  "No hay mal reparto que cien años dure."
+];
 function vistaInicio(){
+  const refran = REFRANES[Math.floor(Math.random()*REFRANES.length)];
   app.innerHTML = `<div class="pantalla portada">
     <h1 class="titulo-grande">Canastón<span>de Mamen</span></h1>
     <div class="portada-botones">
@@ -474,6 +498,7 @@ function vistaInicio(){
       <button class="btn ghost fila-entra" style="animation-delay:.51s" onclick="location.href='canaston.html'">Jugar en un dispositivo</button>
       <button class="btn ghost fila-entra" style="animation-delay:.64s" onclick="irInstrucciones()">Instrucciones</button>
     </div>
+    <p class="refran fila-entra" style="animation-delay:.8s">${esc(refran)}</p>
   </div>`;
 }
 function irCrear(){ pantallaInicial = "crear"; pintar(); }
