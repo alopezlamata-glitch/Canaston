@@ -57,6 +57,8 @@ const PESOS_INICIALES = {
   pozoAyudaClave: -5,        // la tapa del pozo es justo de esta clave: podría completarse a pelo cogiéndolo más adelante
   rivalSinPositivo: 4,       // ningún grupo rival tiene aún limpia+sucia: presionar (bajar más, no guardarse cartas) suele compensar
   desperdiciaVentaja: -3,    // pasar (guardarse cartas) cuando el rival todavía no tiene positivo desaprovecha esa ventaja
+  urgenciaRival: 3,          // el rival con la mano más corta se está acercando a cerrar: no conviene dejar nada bueno sin bajar
+  desperdiciaUrgencia: -3,   // pasar cuando el rival puede cerrar pronto desaprovecha lo que aún se podía bajar
   // ¿merece la pena coger el pozo, o mejor robar del taco? antes era
   // automático (si se podía, se cogía); ahora también se aprende
   esCogerPozo: 20,
@@ -65,14 +67,21 @@ const PESOS_INICIALES = {
   pozoAyudaAbierto: 8,
   limpiaAseguradaCoger: 6,   // con la limpia ya sellada, coger pozo no arriesga nada más: compensa más que antes
   esRobar: 5,
-  // al descartar (menos puntuación = más seguro de tirar)
-  dValor: 12,
+  // al descartar (menos puntuación = más seguro de tirar). El valor en
+  // puntos de la carta pesa menos que antes: importa más la probabilidad
+  // de que se la ponga en bandeja a un rival (ver dProbRivalVarias).
+  dValor: 6,
   dComodin: 80,              // tirar un comodín casi siempre regala la mejor carta posible a quien coja el pozo después: arranca con un rechazo muy fuerte
   dComodinPozoGrande: 40,    // y pesa aún más si el pozo que se llevaría de paso ya es grande
-  dTresNegro: 16,
+  dTresNegro: 6,
+  // un tres negro tapona el pozo: mientras esté encima nadie puede
+  // cogerlo. Con un pozo grande ya formado, taparlo con un tres negro
+  // (que en la mano no vale nada) suele compensar más que guardarlo
+  dTresNegroPozoGrande: -25,
   dClaveAjena: 12,
   dUnica: -6,
-  dEscasez: -5              // una clave ya muy vista es más segura de tirar: a nadie le va a faltar mucho para tenerla completa igualmente
+  dEscasez: -5,             // una clave ya muy vista es más segura de tirar: a nadie le va a faltar mucho para tenerla completa igualmente
+  dProbRivalVarias: 15      // probabilidad de que algún rival ya tenga 2-3 de esta clave en la mano y la aproveche enseguida
 };
 
 let pesosCargados = null;
@@ -100,9 +109,10 @@ function puntuar(f, pesos){
 
 /* ── conteo de cartas: cuánto se ha "visto ya" de una clave numérica,
    usando solo información pública (la propia mano, las escaleras de
-   cualquier grupo -son visibles para todos- y la tapa del pozo). No dice
-   nada de la mano de los rivales, solo estrecha lo que puede quedar por
-   ahí sin ver (en el taco, bajo el pozo, o en sus manos). */
+   cualquier grupo -son visibles para todos- y vistasRango, que lleva la
+   cuenta de todo lo que ha pasado por el pozo esta mano, no solo la
+   tapa). No dice nada de la mano de los rivales, solo estrecha lo que
+   puede quedar por ahí sin ver (en el taco, o en sus manos). */
 function copiasTotales(clave, barajas){
   return 4 * (barajas || 2);   // un palo de cada número por baraja (los monos y el tapón se tratan aparte)
 }
@@ -113,7 +123,7 @@ function escasez(v, clave){
   v.grupos.forEach(g => g.escaleras.forEach(esc => {
     if (esc.clave === clave) vistas += esc.cartas.filter(c => !esMono(c) && c.rango === clave).length;
   }));
-  if (v.pozo.tapa && !esMono(v.pozo.tapa) && v.pozo.tapa.rango === clave) vistas++;
+  vistas += (v.vistasRango && v.vistasRango[clave]) || 0;
   return Math.min(1, vistas / copiasTotales(clave, v.barajas));
 }
 
@@ -129,6 +139,32 @@ function ayudaPozo(v, clave){
    va a complicar mucho la puntuación si la ronda termina ahora */
 function rivalSinPositivo(v){
   return v.grupos.some(g => g.id !== v.miGrupo && !g.positivo) ? 1 : 0;
+}
+
+/* asientos que NO son del propio grupo (para mirar sus manos sin colar
+   al compañero de pareja) */
+function asientosRivales(v){
+  const mios = new Set((v.grupos.find(g => g.id === v.miGrupo) || {asientos:[]}).asientos);
+  return v.jugadores.filter(j => !mios.has(j.asiento));
+}
+/* mano más corta entre los rivales: cuanto más pequeña, más cerca puede
+   estar alguno de cerrar la mano, y conviene no dejar nada sobre la mesa */
+function urgenciaRival(v){
+  const rivales = asientosRivales(v);
+  if (!rivales.length) return 0;
+  const min = Math.min(...rivales.map(j => j.cartas));
+  return Math.max(0, 1 - min / 15);
+}
+/* probabilidad (aproximada) de que algún rival ya tenga 2-3 cartas de esta
+   clave en la mano: más alta cuanta más gente quede sin ver de esa clave
+   (poco vista hasta ahora) y más grande sea la mano rival más numerosa
+   -más cartas, más opciones de que le haya tocado varias-. */
+function probRivalVarias(v, clave){
+  const rivales = asientosRivales(v);
+  if (!rivales.length) return 0;
+  const restante = 1 - escasez(v, clave);
+  const manoMayor = Math.max(...rivales.map(j => j.cartas));
+  return restante * Math.min(1, manoMayor / 15);
 }
 
 /* ¿coger el pozo entero o robar del taco? Antes era automático (se cogía
@@ -231,6 +267,7 @@ function mejorJugada(v, rechazadas, pesos){
 
   const manoBaja = costo => miGrupo.positivo ? 0 : Math.max(0, 2 - (mano.length - costo));
   const rivalVulnerable = rivalSinPositivo(v);
+  const urgencia = urgenciaRival(v);
   const limpiasYaMiGrupo = miGrupo.escaleras.filter(e => e.canasta && e.limpia).length;
 
   // añadir una carta a un juego propio ya empezado
@@ -264,7 +301,8 @@ function mejorJugada(v, rechazadas, pesos){
         cierraSucioSinLimpia,
         escasezXcierreSucio: cierraSucioSinLimpia * escasezClave,
         pozoAyudaClave: cierraConComodin ? ayudaPozo(v, esc.clave) : 0,
-        rivalSinPositivo: rivalVulnerable
+        rivalSinPositivo: rivalVulnerable,
+        urgenciaRival: urgencia
       };
       candidatos.push({firma, costo:1, accion:{tipo:"añadir", escalera:esc.indice, carta:carta.id}, features:f});
     });
@@ -287,13 +325,13 @@ function mejorJugada(v, rechazadas, pesos){
     if (cs.length >= 3){
       const media = cs.reduce((s,c) => s + valor(c), 0) / cs.length / 50;
       const f = { valor:media, esApertura:1, noAbiertoApertura:noAbierto, numCartas:3/7,
-                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable };
+                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
       candidatos.push({firma, costo:3, accion:{tipo:"abrir", carta:cs[0].id}, features:f});
     } else if (cs.length === 2 && mano.some(esMono)){
       const media = cs.reduce((s,c) => s + valor(c), 0) / cs.length / 50;
       const f = { valor:media, esApertura:1, noAbiertoApertura:noAbierto, esAperturaAsistida:1,
                   comodinUsado: 1/3, numCartas:3/7, manoBajaSinPositivo: manoBaja(3),
-                  escasez: escasez(v, rango), rivalSinPositivo: rivalVulnerable };
+                  escasez: escasez(v, rango), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
       candidatos.push({firma, costo:3, accion:{tipo:"abrir", carta:cs[0].id}, features:f});
     }
   });
@@ -303,7 +341,7 @@ function mejorJugada(v, rechazadas, pesos){
     const negros = mano.filter(esTresNegro);
     if (negros.length >= 3){
       const f = { esApertura:1, esTapon:1, noAbiertoApertura:noAbierto, numCartas:3/7,
-                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable };
+                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
       candidatos.push({firma:"abrir:3", costo:3, accion:{tipo:"abrir", carta:negros[0].id}, features:f});
     }
   }
@@ -313,7 +351,7 @@ function mejorJugada(v, rechazadas, pesos){
     const monos = mano.filter(esMono);
     if (monos.length >= 5){
       const f = { esApertura:1, esComodinMeld:1, noAbiertoApertura:noAbierto, numCartas:5/7,
-                  manoBajaSinPositivo: manoBaja(5), rivalSinPositivo: rivalVulnerable };
+                  manoBajaSinPositivo: manoBaja(5), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
       candidatos.push({firma:"abrir:M", costo:5, accion:{tipo:"abrir", carta:monos[0].id}, features:f});
     }
   }
@@ -322,7 +360,7 @@ function mejorJugada(v, rechazadas, pesos){
   // Si el motor obliga a seguir (debeSeguir), no se ofrece: no hay margen
   // para elegir quedarse quieto.
   if (!debeSeguir) candidatos.push({firma:"pasar", costo:0, accion:null,
-    features:{pasar:1, desperdiciaVentaja: rivalVulnerable}});
+    features:{pasar:1, desperdiciaVentaja: rivalVulnerable, desperdiciaUrgencia: urgencia}});
 
   if (!candidatos.length) return null;
   candidatos.forEach(c => c.score = puntuar(c.features, pesos));
@@ -351,9 +389,18 @@ function elegirDescarte(v, pesos){
       dComodin: esMono(c) ? 1 : 0,
       dComodinPozoGrande: esMono(c) ? pozoTam : 0,   // regalar un comodín pesa más cuanto más gordo esté ya el pozo que se lleva quien lo coja
       dTresNegro: esTresNegro(c) ? 1 : 0,
+      // un tres negro (o un comodín) tapona el pozo: nadie puede cogerlo
+      // mientras esté encima. Cuanto más grande sea ya el pozo, más vale
+      // la pena taparlo con un tres negro (que en la mano no vale nada de
+      // todas formas) en vez de dejarlo disponible para el rival
+      dTresNegroPozoGrande: esTresNegro(c) ? pozoTam : 0,
       dClaveAjena: (!esMono(c) && clavesAjenas.has(c.rango)) ? 1 : 0,
       dUnica: (!esMono(c) && !esTresNegro(c) && repetidas === 1) ? 1 : 0,
-      dEscasez: (!esMono(c) && !esTresNegro(c)) ? escasez(v, c.rango) : 0
+      dEscasez: (!esMono(c) && !esTresNegro(c)) ? escasez(v, c.rango) : 0,
+      // más importante que el valor de la carta: la probabilidad de que
+      // algún rival ya tenga 2-3 iguales en la mano y pueda aprovecharla
+      // de inmediato (juntarla o coger el pozo con ella)
+      dProbRivalVarias: (!esMono(c) && !esTresNegro(c)) ? probRivalVarias(v, c.rango) : 0
     };
     return {carta:c, riesgo: puntuar(f, pesos)};
   });

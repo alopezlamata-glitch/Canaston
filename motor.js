@@ -173,6 +173,14 @@ function repartir(e){
   e.taco = mazo;
   e.volteos = 0;
   e.congeladores = [];
+  // cuántas cartas de cada número se han visto ya en el pozo (repartidas
+  // al abrirlo, o descartadas después): dato público, cualquiera que
+  // preste atención a la mesa lleva esta cuenta. Solo naturales -los
+  // comodines y treses negros no hacen falta para calcular la escasez de
+  // una clave-. Se resetea también si el pozo se recicla al taco: esas
+  // cartas concretas vuelven a estar escondidas y mezcladas.
+  e.vistasRango = {};
+  e.pozo.forEach(c => { if (!esMono(c) && c.rango !== 3) e.vistasRango[c.rango] = (e.vistasRango[c.rango]||0) + 1; });
 
   e.jugadores.forEach(j => {
     let cambio = true;
@@ -302,6 +310,7 @@ function reponerTaco(e){
   if (!e.pozo.length && !e.pozoTapado.length) return false;
   e.taco = e.pozoTapado.concat(e.pozo.slice().reverse());
   e.pozo = []; e.pozoTapado = []; e.congeladores = [];
+  e.vistasRango = {};   // esas cartas vuelven a estar escondidas, mezcladas en el taco
   e.volteos++;
   return true;
 }
@@ -409,6 +418,10 @@ const ACCIONES = {
     usadas.forEach(c => j.mano.splice(j.mano.findIndex(x => x.id === c.id), 1));
 
     e.pozoRetenido = e.pozo.concat(e.pozoTapado).filter(c => c.id !== tapa.id);
+    // estas cartas van a acabar en una combi o en la mano de quien coge el
+    // pozo, y ahí las vuelve a contar cabe/escasez; hay que descontarlas
+    // aquí o se contarían dos veces
+    e.pozo.forEach(c => { if (!esMono(c) && c.rango !== 3 && e.vistasRango[c.rango]) e.vistasRango[c.rango]--; });
     e.pozo = []; e.pozoTapado = []; e.congeladores = [];
 
     let combi = combiDe(g, tapa.rango);
@@ -490,6 +503,7 @@ const ACCIONES = {
     }
     const carta = j.mano.splice(i,1)[0];
     e.pozo.push(carta);
+    if (!esMono(carta) && carta.rango !== 3) e.vistasRango[carta.rango] = (e.vistasRango[carta.rango]||0) + 1;
     if (esMono(carta)) e.congeladores.push(carta);
     if (esTresNegro(carta)) suceso(e,"tapon",{asiento:e.turno});
     if (j.mano.length === 1) suceso(e,"pumba",{asiento:e.turno});
@@ -598,6 +612,7 @@ function vistaPara(e, asiento){
   const publico = g => ({
     id: g.id, nombre: g.nombre, puntos: g.puntos,
     abierto: g.abierto, minimo: minimoSalida(g),
+    asientos: g.asientos.slice(),                   // quién juega en qué equipo: dato público de la mesa
     flores: g.flores.length,
     canastas: g.combis.filter(esCanasta).length,
     positivo: resumenGrupo(g).positivo,
@@ -628,6 +643,7 @@ function vistaPara(e, asiento){
     grupos: e.grupos.map(publico),
     miGrupo: miGrupo.id,
     barajas: e.cfg.barajas,                         // dato público de la mesa, no de la mano de nadie
+    vistasRango: Object.assign({}, e.vistasRango),   // cuántas de cada número se han visto ya en el pozo (repartidas o descartadas)
     taco: e.taco.length,                           // cuántas, nunca el orden
     volteos: e.volteos,
     pozo: {
