@@ -64,10 +64,14 @@ function elegirMesa(rnd){
 
 /* cada duelo se juega dos veces con la misma semilla y la misma mesa,
    alternando quién se sienta primero, para que la ventaja de empezar
-   no decida el resultado */
-function enfrentar(pesosA, pesosB, nPartidas, objetivo, semillaBase, rnd){
+   no decida el resultado. El rival no es siempre el mismo: se reparte
+   entre los últimos campeones (poolB) para no acabar con unos pesos que
+   solo saben ganarle al inmediatamente anterior y pierden contra estilos
+   de hace unas generaciones ("sobreajuste cíclico" del autojuego). */
+function enfrentar(pesosA, poolB, nPartidas, objetivo, semillaBase, rnd){
   let total = 0;
   for (let i = 0; i < nPartidas; i++){
+    const pesosB = poolB[i % poolB.length];
     const mesa = elegirMesa(rnd);
     const semilla = semillaBase + i * 7919;
     const r1 = jugarDuelo(pesosA, pesosB, semilla, objetivo, mesa.n, mesa.parejas);
@@ -91,9 +95,11 @@ function mutar(pesos, rnd, fuerza){
 const RUTA_PESOS = path.join(__dirname, "pesos-bot.json");
 const RUTA_ESTADO = path.join(__dirname, ".entrenamiento-estado.json");
 
-function guardarCheckpoint(campeon, fuerzaMutacion, generacionesSinMejora, gCompletada){
+const TAMANO_POOL = 6;   // cuántos campeones anteriores se guardan como rivales
+
+function guardarCheckpoint(campeon, pool, fuerzaMutacion, generacionesSinMejora, gCompletada){
   fs.writeFileSync(RUTA_PESOS, JSON.stringify(campeon, null, 2) + "\n");
-  fs.writeFileSync(RUTA_ESTADO, JSON.stringify({campeon, fuerzaMutacion, generacionesSinMejora, gCompletada}, null, 2) + "\n");
+  fs.writeFileSync(RUTA_ESTADO, JSON.stringify({campeon, pool, fuerzaMutacion, generacionesSinMejora, gCompletada}, null, 2) + "\n");
 }
 
 function main(){
@@ -104,6 +110,7 @@ function main(){
 
   const rnd = mulberry32(Date.now() >>> 0);
   let campeon = Object.assign({}, Bot.PESOS_INICIALES);
+  let pool = [campeon];
   let fuerzaMutacion = 0.5;
   let generacionesSinMejora = 0;
   let gInicio = 1;
@@ -113,16 +120,18 @@ function main(){
     try {
       const estado = JSON.parse(fs.readFileSync(RUTA_ESTADO, "utf8"));
       campeon = estado.campeon;
+      pool = estado.pool && estado.pool.length ? estado.pool : [campeon];
       fuerzaMutacion = estado.fuerzaMutacion;
       generacionesSinMejora = estado.generacionesSinMejora;
       gInicio = estado.gCompletada + 1;
-      console.log("Reanudando desde la generación", gInicio, "(estado guardado encontrado).");
+      console.log("Reanudando desde la generación", gInicio, "(estado guardado encontrado, pool de", pool.length, "campeones).");
     } catch { console.log("No se pudo leer el estado guardado, se empieza de cero."); }
   // ...o, si no, partir de unos pesos ya entrenados anteriormente en vez
   // de volver a empezar desde los pesos de partida sin entrenar
   } else if (fs.existsSync(RUTA_PESOS)){
     try {
       campeon = Object.assign({}, Bot.PESOS_INICIALES, JSON.parse(fs.readFileSync(RUTA_PESOS, "utf8")));
+      pool = [campeon];
       console.log("Partiendo de los pesos ya guardados en pesos-bot.json.");
     } catch { console.log("No se pudo leer pesos-bot.json, se empieza de cero."); }
   }
@@ -135,19 +144,21 @@ function main(){
     for (let h = 0; h < hijosPorGeneracion; h++){
       const hijo = mutar(campeon, rnd, fuerzaMutacion);
       const semillaBase = Math.floor(rnd() * 1e9);
-      const margen = enfrentar(hijo, campeon, partidasPorDuelo, objetivo, semillaBase, rnd);
+      const margen = enfrentar(hijo, pool, partidasPorDuelo, objetivo, semillaBase, rnd);
       if (margen > mejorMargen){ mejorMargen = margen; mejorHijo = hijo; }
     }
     if (mejorHijo && mejorMargen > 15){    // margen mínimo para no quedarse con ruido
       campeon = mejorHijo;
+      pool.push(campeon);
+      if (pool.length > TAMANO_POOL) pool.shift();
       generacionesSinMejora = 0;
-      console.log(`gen ${g}: mejora encontrada, margen +${mejorMargen.toFixed(0)} puntos/partida`);
+      console.log(`gen ${g}: mejora encontrada, margen +${mejorMargen.toFixed(0)} puntos/partida (pool: ${pool.length})`);
     } else {
       generacionesSinMejora++;
       if (generacionesSinMejora % 5 === 0) fuerzaMutacion *= 0.7;   // si no mejora, busca más cerca
       console.log(`gen ${g}: sin mejora (mejor intento ${mejorMargen.toFixed(0)}), fuerza mutación ${fuerzaMutacion.toFixed(2)}`);
     }
-    guardarCheckpoint(campeon, fuerzaMutacion, generacionesSinMejora, g);   // progreso a salvo aunque se corte
+    guardarCheckpoint(campeon, pool, fuerzaMutacion, generacionesSinMejora, g);   // progreso a salvo aunque se corte
   }
 
   fs.unlinkSync(RUTA_ESTADO);

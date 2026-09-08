@@ -26,7 +26,7 @@
 "use strict";
 const esNode = typeof module !== "undefined" && module.exports;
 const Motor = esNode ? require("./motor.js") : raiz.Motor;
-const {esMono, esTresNegro, valor} = Motor;
+const {esMono, esTresNegro, valor, claveDe} = Motor;
 
 /* pesos de partida: no son la estrategia final, solo el punto de partida
    desde el que entrenar.js empieza a buscar algo mejor por autojuego */
@@ -45,6 +45,13 @@ const PESOS_INICIALES = {
   numCartas: 4,              // cuántas cartas mueve la jugada
   manoBajaSinPositivo: -10,  // dejaría la mano peligrosamente corta sin haber llegado aún a "positivo"
   pasar: 2,                  // valor de "no bajar más esta vez y guardarme las cartas"
+  // ¿merece la pena coger el pozo, o mejor robar del taco? antes era
+  // automático (si se podía, se cogía); ahora también se aprende
+  esCogerPozo: 20,
+  pozoTamano: 10,
+  pozoValorTapa: 5,
+  pozoAyudaAbierto: 8,
+  esRobar: 5,
   // al descartar (menos puntuación = más seguro de tirar)
   dValor: 12,
   dComodin: 40,
@@ -76,6 +83,22 @@ function puntuar(f, pesos){
   return s;
 }
 
+/* ¿coger el pozo entero o robar del taco? Antes era automático (se cogía
+   siempre que era legal); ahora se compara puntuando las dos opciones,
+   igual que cualquier otra decisión */
+function coger(v, pesos){
+  const miGrupo = v.grupos.find(g => g.id === v.miGrupo);
+  const claveTapa = claveDe(v.pozo.tapa);
+  const yaAbierta = miGrupo.escaleras.some(esc => esc.clave === claveTapa && !esc.canasta);
+  const fCoger = {
+    esCogerPozo: 1,
+    pozoTamano: Math.min(1, v.pozo.total / 20),
+    pozoValorTapa: valor(v.pozo.tapa) / 50,
+    pozoAyudaAbierto: yaAbierta ? 1 : 0
+  };
+  return puntuar(fCoger, pesos) >= puntuar({esRobar:1}, pesos);
+}
+
 /* hace exactamente una jugada (robar/coger pozo/elegir comodín/bajar algo/
    descartar) y dice si con eso se ha terminado el turno. Es el paso mínimo
    que comparten jugarTurno (todo el turno de golpe, para entrenar.js y los
@@ -85,7 +108,7 @@ function unPaso(e, asiento, pesos, rechazadas){
 
   if (e.faseTurno === "robar"){
     const v = Motor.vistaPara(e, asiento);
-    if (v.pozo.estado === "disponible"){
+    if (v.pozo.estado === "disponible" && coger(v, pesos)){
       const r = Motor.aplicar(e, asiento, {tipo:"cogerPozo"});
       if (r.ok) return false;
       // rechazado (p.ej. te dejaría sin mano y sin nada que cerrar): roba en su lugar
