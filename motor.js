@@ -627,6 +627,7 @@ function vistaPara(e, asiento){
     })),
     grupos: e.grupos.map(publico),
     miGrupo: miGrupo.id,
+    barajas: e.cfg.barajas,                         // dato público de la mesa, no de la mano de nadie
     taco: e.taco.length,                           // cuántas, nunca el orden
     volteos: e.volteos,
     pozo: {
