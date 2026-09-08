@@ -1366,16 +1366,22 @@ function vistaSetup(){
       ${Array.from({length:n},(_,i)=>`
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <input style="margin-bottom:0;flex:1" value="${esc(cfgTmp.nombres[i]||"Jugador "+(i+1))}" oninput="cfgTmp.nombres[${i}]=this.value">
-        <button aria-pressed="${!!cfgTmp.cpu[i]}" onclick="setCPU(${i},${!cfgTmp.cpu[i]})"
+        ${n===4?"":`<button aria-pressed="${!!cfgTmp.cpu[i]}" onclick="setCPU(${i},${!cfgTmp.cpu[i]})"
           style="flex:0 0 auto;padding:9px 13px;border-radius:6px;border:1px solid var(--linea);font:600 13px var(--sans);cursor:pointer;
             background:${cfgTmp.cpu[i]?"var(--hueso)":"rgba(0,0,0,.2)"};color:${cfgTmp.cpu[i]?"var(--tinta)":"var(--hueso)"}">
-          ${cfgTmp.cpu[i]?"IA":"Humano"}</button>
+          ${cfgTmp.cpu[i]?"IA":"Humano"}</button>`}
       </div>`).join("")}
-      <p class="meta">Toca "Humano"/"IA" para elegir quién controla cada jugador.</p></div>
+      <p class="meta">${n===4
+        ? "La IA todavía no está disponible en partidas de 4: puede quedarse atascada."
+        : `Toca "Humano"/"IA" para elegir quién controla cada jugador.`}</p></div>
     <button class="btn" onclick="empezar()">Empezar partida</button></div>`;
 }
 function setN(k){
   cfgTmp.n=k;if(k!==4)cfgTmp.parejas=false;
+  if(k===4)for(let i=0;i<cfgTmp.cpu.length;i++){    // la IA no está disponible en partidas de 4 todavía
+    cfgTmp.cpu[i]=false;
+    if(/^IA \d+$/.test(cfgTmp.nombres[i]||""))cfgTmp.nombres[i]="Jugador "+(i+1);
+  }
   if(!opcionesBarajas(k).includes(cfgTmp.barajas))cfgTmp.barajas=k===2?2:3;
   while(cfgTmp.nombres.length<k)cfgTmp.nombres.push("Jugador "+(cfgTmp.nombres.length+1));
   while(cfgTmp.cpu.length<k)cfgTmp.cpu.push(false);

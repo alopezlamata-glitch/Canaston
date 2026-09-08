@@ -603,13 +603,15 @@ function vistaEntrada(){
         const i=idx+1, esCpu=!!cfg.cpuAsientos[i];
         return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
           <span class="meta" style="flex:1">Jugador ${i+1}</span>
-          <button aria-pressed="${esCpu}" onclick="setCpuAsiento(${i},${!esCpu})"
+          ${cfg.plazas===4 ? `<span class="meta">Esperar</span>` : `<button aria-pressed="${esCpu}" onclick="setCpuAsiento(${i},${!esCpu})"
             style="flex:0 0 auto;padding:9px 13px;border-radius:6px;border:1px solid var(--linea);font:600 13px var(--sans);cursor:pointer;
               background:${esCpu?"var(--hueso)":"rgba(0,0,0,.2)"};color:${esCpu?"var(--tinta)":"var(--hueso)"}">
-            ${esCpu?"IA":"Esperar"}</button>
+            ${esCpu?"IA":"Esperar"}</button>`}
         </div>`;
       }).join("")}
-      <p class="meta">"IA" para que juegue la máquina desde ya; "Esperar" para dejar el asiento libre hasta que se una alguien.</p>
+      <p class="meta">${cfg.plazas===4
+        ? "La IA todavía no está disponible en mesas de 4: puede quedarse atascada. Esperando siempre a jugadores reales."
+        : `"IA" para que juegue la máquina desde ya; "Esperar" para dejar el asiento libre hasta que se una alguien.`}</p>
     </div>
     <div class="campo"><label>Barajas</label>
       <div class="seg">${opcionesBarajas(cfg.plazas).map(k=>`<button aria-pressed="${cfg.barajas===k}" onclick="setBarajas(${k})">${k}</button>`).join("")}</div></div>
@@ -632,6 +634,7 @@ function vistaEntrada(){
 }
 function setP(k){
   cfg.plazas=k; if(k!==4)cfg.parejas=false;
+  if(k===4)cfg.cpuAsientos=[false,false,false,false];   // la IA no está disponible en mesas de 4 todavía
   if(!opcionesBarajas(k).includes(cfg.barajas)) cfg.barajas = k===2?2:3;
   pintar();
 }
@@ -644,6 +647,7 @@ function todosLosDemasSonIA(c){
   return true;
 }
 function setCpuAsiento(i,v){
+  if(cfg.plazas===4)return;   // la IA no está disponible en mesas de 4 todavía
   cfg.cpuAsientos[i]=v;
   if(todosLosDemasSonIA(cfg))cfg.publica=false;
   pintar();
@@ -706,7 +710,7 @@ function vistaEspera(){
     <button class="btn ghost" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>`
       :`<button class="btn" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>`}
     ${copiado?`<span class="chip-ok">✓ copiado</span>`:""}
-    ${faltan>0?`<p style="margin-top:22px"><button class="btn ghost" onclick="rellenarCPU()">Rellenar con CPU y empezar</button></p>`:""}
+    ${faltan>0&&INFO.plazas!==4?`<p style="margin-top:22px"><button class="btn ghost" onclick="rellenarCPU()">Rellenar con CPU y empezar</button></p>`:""}
     <p style="margin-top:${faltan>0?"10":"26"}px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
       onclick="abandonar()">Salir de la sala</button></p>
   </div>`;

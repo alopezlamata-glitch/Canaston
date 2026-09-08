@@ -135,7 +135,8 @@ wss.on("connection", ws => {
       sala.asientos[0] = {nombre: (m.nombre||"Jugador 1").slice(0,14), ficha:f, ws};
       ws.sala = sala.id; ws.asiento = 0;
       ws.send(JSON.stringify({tipo:"sentado", sala:sala.id, asiento:0, ficha:f}));
-      if (Array.isArray(m.cpuAsientos)){
+      // la IA todavía no está disponible en mesas de 4: puede quedarse atascada
+      if (Array.isArray(m.cpuAsientos) && sala.cfg.plazas !== 4){
         for (let i = 1; i < sala.cfg.plazas; i++)
           if (m.cpuAsientos[i])
             sala.asientos[i] = {nombre: "CPU " + (i + 1), ficha:null, ws:null, cpu:true};
@@ -176,6 +177,7 @@ wss.on("connection", ws => {
       const sala = salas.get(ws.sala);
       if (!sala) return error("no estás en ninguna sala");
       if (sala.estado) return error("la partida ya ha empezado");
+      if (sala.cfg.plazas === 4) return error("la IA todavía no está disponible en mesas de 4");
       for (let i = 0; i < sala.cfg.plazas; i++)
         if (!sala.asientos[i]) sala.asientos[i] = {nombre: "CPU " + (i + 1), ficha:null, ws:null, cpu:true};
       empezarSiEstaLlena(sala);
