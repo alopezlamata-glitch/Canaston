@@ -669,10 +669,12 @@ function vistaEspera(){
     <button class="btn ghost" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>`
       :`<button class="btn" onclick="copiar('${esc(enlace)}')">Copiar enlace</button>`}
     ${copiado?`<span class="chip-ok">✓ copiado</span>`:""}
-    <p style="margin-top:26px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
+    ${faltan>0?`<p style="margin-top:22px"><button class="btn ghost" onclick="rellenarCPU()">Rellenar con CPU y empezar</button></p>`:""}
+    <p style="margin-top:${faltan>0?"10":"26"}px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
       onclick="abandonar()">Salir de la sala</button></p>
   </div>`;
 }
+function rellenarCPU(){ envio({tipo:"rellenarCPU"}); }
 function copiar(t){
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject())
     .then(()=>{

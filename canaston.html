@@ -258,6 +258,13 @@ body{
 }
 #aviso.salida{border-left-color:var(--oro);color:var(--oro)}
 #aviso.err{border-left-color:var(--rojo);color:#eab9b1}
+#aviso.pensando{border-left-color:var(--oro-hondo);color:var(--apag)}
+.puntitos{display:inline-flex;gap:4px;vertical-align:middle;margin-left:5px}
+.puntitos i{width:5px;height:5px;border-radius:50%;background:var(--oro);
+  animation:puntito 1.1s ease-in-out infinite;font-style:normal}
+.puntitos i:nth-child(2){animation-delay:.15s}
+.puntitos i:nth-child(3){animation-delay:.3s}
+@keyframes puntito{0%,80%,100%{opacity:.25;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
 #capa.pregunta{display:flex;align-items:center;justify-content:center}
 .cuadro{
   background:linear-gradient(#26332b,#1b241e);border:1px solid var(--linea);
@@ -408,7 +415,7 @@ function nuevaPartida(cfg){
     grupos.push({id:1,nombre:"Pareja B",asientos:[1,3]});
   } else cfg.nombres.forEach((n,i)=>grupos.push({id:i,nombre:n,asientos:[i]}));
   grupos.forEach(g=>g.puntos=0);
-  G={cfg,jugadores:cfg.nombres.map((n,i)=>({nombre:n,mano:[],asiento:i})),
+  G={cfg,jugadores:cfg.nombres.map((n,i)=>({nombre:n,mano:[],asiento:i,cpu:!!(cfg.cpu&&cfg.cpu[i])})),
      grupos,manoNum:0,repartidor:0};
   repartirMano();
 }
@@ -450,6 +457,7 @@ function repartirMano(){
 function reiniciarTurno(){
   G.debeUsarTapa=false;G.idsDelPozo=new Set();G.sel=null;G.pozoRetenido=null;G.expandida=null;G.pregunta=null;G.turnoDePozo=false;
   if(G.grupos)G.grupos.forEach(g=>g.combis.forEach(c=>c.cartas.forEach(x=>x.nueva=false)));
+  botRechazadas.clear();
 }
 /* ═══════════ combinaciones ═══════════ */
 const combiDe=(g,k)=>g.combis.find(c=>c.clave===k);
@@ -911,6 +919,159 @@ function abandonarPartida(){
   pintar();
 }
 
+/* ═══════════ jugadores con IA ═══════════
+   Misma idea que bot.js (el bot del modo online): cada jugada posible se
+   describe con unas cuantas características y se puntúa con una combinación
+   lineal de pesos aprendidos por autojuego (ver entrenar.js), no con reglas
+   fijas puestas a mano. Los pesos son los mismos que pesos-bot.json; aquí van
+   copiados en vez de cargados por fetch para que el modo offline no dependa
+   de red. Opera directamente sobre G (aquí no hay nada que ocultar: es el
+   mismo dispositivo) llamando a las mismas funciones que usa un humano. */
+const PESOS_BOT={
+  "valor":0.8787184652739505,"cierra":8.498556950166693,"yaCanasta":-5.0143152078987825,
+  "comodinUsado":-28.24278526890203,"proximidad":13.082576993288392,"lograPositivo":48.05557905991445,
+  "esApertura":-4.188238122907212,"noAbiertoApertura":0.7337408184241331,"esTapon":6.832209807407288,
+  "esComodinMeld":-0.9577341332450074,"esAperturaAsistida":4.686932972429311,"numCartas":-1.8792125783201383,
+  "manoBajaSinPositivo":-8.274498910240741,"pasar":1.1433732276508035,"dValor":1.4149139108263498,
+  "dComodin":4.672741761258994,"dTresNegro":27.508121614410204,"dClaveAjena":-0.5583339610175624,
+  "dUnica":-22.76421373249868
+};
+let botRechazadas=new Set();
+function puntuarBot(f){let s=0;for(const k in f)if(PESOS_BOT[k]!==undefined)s+=PESOS_BOT[k]*f[k];return s;}
+function decidirComodinBot(mano){
+  const ms=mano.filter(esMono).sort((a,b)=>valor(a)-valor(b));
+  return ms.length?ms[0].id:null;
+}
+function elegirDescarteBot(mano,miGrupoId){
+  if(mano.length===1)return mano[0].id;
+  const clavesAjenas=new Set();
+  G.grupos.forEach(gr=>{if(gr.id!==miGrupoId)gr.combis.forEach(c=>clavesAjenas.add(c.clave));});
+  const opciones=mano.map(c=>{
+    const repetidas=mano.filter(x=>x.rango===c.rango&&!esMono(x)).length;
+    const f={
+      dValor:valor(c)/50,
+      dComodin:esMono(c)?1:0,
+      dTresNegro:esTresNegro(c)?1:0,
+      dClaveAjena:(!esMono(c)&&clavesAjenas.has(c.rango))?1:0,
+      dUnica:(!esMono(c)&&!esTresNegro(c)&&repetidas===1)?1:0
+    };
+    return {carta:c,riesgo:puntuarBot(f)};
+  });
+  opciones.sort((a,b)=>a.riesgo-b.riesgo);
+  return opciones[0].carta.id;
+}
+function mejorJugadaBot(g,mano,rechazadas){
+  const candidatos=[];
+  const positivo=resumenGrupo(g).positivo;
+  const debeSeguir=!!G.pozoRetenido||(!g.abierto&&puntosNuevosTurno(g)>0);
+  const manoBaja=costo=>positivo?0:Math.max(0,2-(mano.length-costo));
+
+  g.combis.forEach((esc,indice)=>{
+    mano.forEach(carta=>{
+      if(!cabe(esc.clave,esc.cartas,carta,g))return;
+      const firma="add:"+indice+":"+carta.id;
+      if(rechazadas.has(firma))return;
+      const esCanastaYa=esCanasta(esc);
+      const cierra=!esCanastaYa&&esc.cartas.length===6;
+      let lograPositivo=false;
+      if(cierra){
+        const canastasYa=g.combis.filter(esCanasta).length;
+        const limpiasYa=g.combis.filter(c=>esCanasta(c)&&cuentaComoLimpia(c,g)).length;
+        const limpiaSegura=esc.clave==="M"||(esc.cartas.every(c=>!esMono(c))&&!esMono(carta));
+        lograPositivo=(limpiasYa+(limpiaSegura?1:0))>=1&&canastasYa+1>=2;
+      }
+      const f={
+        valor:valor(carta)/50,
+        cierra:cierra?1:0,
+        yaCanasta:esCanastaYa?1:0,
+        comodinUsado:(!esCanastaYa&&esMono(carta))?1:0,
+        proximidad:esCanastaYa?0:Math.max(0,7-esc.cartas.length)/7,
+        lograPositivo:lograPositivo?1:0,
+        manoBajaSinPositivo:manoBaja(1)
+      };
+      candidatos.push({firma,costo:1,accion:()=>aJuego(carta.id,indice),features:f});
+    });
+  });
+
+  const yaAMedias=new Set(g.combis.filter(c=>!esCanasta(c)).map(c=>c.clave));
+  const noAbierto=g.abierto?0:1;
+  const porRango=new Map();
+  mano.forEach(c=>{
+    if(esMono(c)||esTresNegro(c))return;
+    if(!porRango.has(c.rango))porRango.set(c.rango,[]);
+    porRango.get(c.rango).push(c);
+  });
+  porRango.forEach((cs,rango)=>{
+    if(yaAMedias.has(rango))return;
+    const firma="abrir:"+rango;
+    if(rechazadas.has(firma))return;
+    if(cs.length>=3){
+      const media=cs.reduce((s,c)=>s+valor(c),0)/cs.length/50;
+      const f={valor:media,esApertura:1,noAbiertoApertura:noAbierto,numCartas:3/7,manoBajaSinPositivo:manoBaja(3)};
+      candidatos.push({firma,costo:3,accion:()=>abrirEscalera(cs[0].id),features:f});
+    } else if(cs.length===2&&mano.some(esMono)){
+      const media=cs.reduce((s,c)=>s+valor(c),0)/cs.length/50;
+      const f={valor:media,esApertura:1,noAbiertoApertura:noAbierto,esAperturaAsistida:1,comodinUsado:1/3,numCartas:3/7,manoBajaSinPositivo:manoBaja(3)};
+      candidatos.push({firma,costo:3,accion:()=>abrirEscalera(cs[0].id),features:f});
+    }
+  });
+
+  if(!yaAMedias.has(3)&&!g.combis.some(c=>c.clave===3)&&!rechazadas.has("abrir:3")){
+    const negros=mano.filter(esTresNegro);
+    if(negros.length>=3){
+      const f={esApertura:1,esTapon:1,noAbiertoApertura:noAbierto,numCartas:3/7,manoBajaSinPositivo:manoBaja(3)};
+      candidatos.push({firma:"abrir:3",costo:3,accion:()=>abrirEscalera(negros[0].id),features:f});
+    }
+  }
+  if(!g.combis.some(c=>c.clave==="M")&&!rechazadas.has("abrir:M")){
+    const monos=mano.filter(esMono);
+    if(monos.length>=5){
+      const f={esApertura:1,esComodinMeld:1,noAbiertoApertura:noAbierto,numCartas:5/7,manoBajaSinPositivo:manoBaja(5)};
+      candidatos.push({firma:"abrir:M",costo:5,accion:()=>abrirEscalera(monos[0].id),features:f});
+    }
+  }
+
+  if(!debeSeguir)candidatos.push({firma:"pasar",costo:0,accion:null,features:{pasar:1}});
+  if(!candidatos.length)return null;
+  candidatos.forEach(c=>c.score=puntuarBot(c.features));
+  candidatos.sort((a,b)=>b.score-a.score);
+  return candidatos[0].accion?candidatos[0]:null;
+}
+// juega exactamente una acción (robar, bajar una carta, descartar...) y deja
+// que las funciones de siempre (que ya llaman a pintar()) sigan el hilo
+function pasoDeBot(){
+  const j=G.jugadores[G.turno],g=grupoDe(G.turno);
+  if(G.faseTurno==="robar"){
+    if(puedeCogerPozo())return cogerPozo();
+    return robar();
+  }
+  if(G.pregunta)return responderMono(decidirComodinBot(j.mano));
+  const jugada=mejorJugadaBot(g,j.mano,botRechazadas);
+  if(jugada){
+    jugada.accion();
+    if(G.error)botRechazadas.add(jugada.firma);   // rechazada por el motor: no reintentar
+    return;
+  }
+  descartar(elegirDescarteBot(j.mano,g.id));
+}
+// se programa un único paso a la vez, con una pequeña espera para que no se
+// note instantáneo; cada acción vuelve a llamar a pintar(), que reprograma
+// el siguiente paso si el turno sigue siendo de la IA
+let cpuProgramado=false;
+function programarCPU(){
+  if(cpuProgramado||!G||G.fase!=="turno")return;
+  const j=G.jugadores[G.turno];
+  if(!j||!j.cpu)return;
+  cpuProgramado=true;
+  setTimeout(()=>{
+    cpuProgramado=false;
+    if(!G||G.fase!=="turno")return;
+    const jAhora=G.jugadores[G.turno];
+    if(!jAhora||!jAhora.cpu)return;
+    pasoDeBot();
+  },650+Math.random()*450);
+}
+
 /* ═══════════ pintado ═══════════ */
 const app=document.getElementById("app");
 const esc=s=>String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
@@ -994,6 +1155,7 @@ function abanicoDorsos(n){
 
 function vistaTurno(){
   const j=G.jugadores[G.turno],g=grupoDe(G.turno),r=resumenGrupo(g);
+  const esCPU=!!j.cpu;
   const robando=G.faseTurno==="robar";
   const tapa=G.pozo.length?G.pozo[G.pozo.length-1]:null;
   const nuevos=puntosNuevosTurno(g);
@@ -1020,7 +1182,7 @@ function vistaTurno(){
 
     <!-- río: taco y pozo -->
     <div class="rio">
-      <div class="pila" data-drop="taco" ${robando?'data-src="taco"':""}>
+      <div class="pila" data-drop="taco" ${robando&&!esCPU?'data-src="taco"':""}>
         <div class="stack">
           ${htmlDorso("","transform:translate(4px,4px)")}
           ${htmlDorso("","transform:translate(2px,2px)")}
@@ -1028,7 +1190,7 @@ function vistaTurno(){
         </div>
         <span class="pie">${G.volteos?"volteado"+(G.volteos>1?" ×"+G.volteos:""):""}</span>
       </div>
-      <div class="pila" data-drop="pozo" ${tapa&&robando?'data-src="pozo"':""}>
+      <div class="pila" data-drop="pozo" ${tapa&&robando&&!esCPU?'data-src="pozo"':""}>
         <div class="stack">
           ${G.pozoRetenido?htmlDorso("","transform:translate(4px,4px);opacity:.55")
             +htmlDorso("","transform:translate(2px,2px);opacity:.7")
@@ -1050,12 +1212,13 @@ function vistaTurno(){
 
     <!-- avisos, en su propia franja para no tapar la mesa -->
     <div class="banda mensajera">
-      ${G.mensaje?`<span id="aviso" class="${G.error?"err":""}">${esc(G.mensaje)}</span>`
+      ${esCPU?`<span id="aviso" class="pensando">${esc(j.nombre)} está pensando<span class="puntitos"><i></i><i></i><i></i></span></span>`
+        :G.mensaje?`<span id="aviso" class="${G.error?"err":""}">${esc(G.mensaje)}</span>`
         :(!g.abierto&&G.faseTurno==="jugar"&&nuevos>0
           ?`<span id="aviso" class="salida">salida ${nuevos}/${minimoSalida(g)}</span>`:"")}
     </div>
 
-    <!-- mi mano -->
+    <!-- mi mano (o el dorso de las cartas, si juega la IA) -->
     <div class="banda mimano" data-drop="mano">
       <div style="display:flex;justify-content:center;gap:9px;margin-bottom:8px;align-items:center">
         <span class="placa activo"><b>${esc(G.cfg.parejas?g.nombre:j.nombre)}</b>
@@ -1063,7 +1226,8 @@ function vistaTurno(){
         <span class="meta">${g.abierto?(r.canastas.length===1?"1 canasta":r.canastas.length+" canastas"):"salida "+minimoSalida(g)}</span>
       </div>
       <div class="mano">
-        ${montones(j.mano).map(([k,cs])=>{
+        ${esCPU?`<div class="abanico" style="height:auto">${abanicoDorsos(j.mano.length)}</div>`:
+        montones(j.mano).map(([k,cs])=>{
           const c=cs[0];
           return `<div class="monton" data-rango="${k}">
             ${cs.length>2?`<div class="carta prof a"></div>`:""}
@@ -1076,7 +1240,7 @@ function vistaTurno(){
 
   </div>
   ${G.mirando!=null?capaRival():""}
-  ${G.pregunta?capaPregunta():""}
+  ${G.pregunta&&!esCPU?capaPregunta():""}
   ${G.expandida!=null?capaCanasta():""}`;
   if(G.sel)marcarObjetivos(G.sel);
   activar();
@@ -1169,7 +1333,7 @@ function contarResultados(){
     requestAnimationFrame(paso);
   });
 }
-let cfgTmp={n:4,parejas:false,objetivo:10000,barajas:3,nombres:["Jugador 1","Jugador 2","Jugador 3","Jugador 4"]};
+let cfgTmp={n:4,parejas:false,objetivo:10000,barajas:3,nombres:["Jugador 1","Jugador 2","Jugador 3","Jugador 4"],cpu:[false,false,false,false]};
 const opcionesBarajas=n=>n===4?[3,4]:[2,3];
 function vistaSetup(){
   const n=cfgTmp.n;
@@ -1177,7 +1341,7 @@ function vistaSetup(){
     <a href="sala.html" style="text-decoration:none"><button class="btn ghost"
       style="font-size:12.5px;padding:7px 12px;margin-bottom:18px">← Volver</button></a>
     <h1>Canastón</h1>
-    <p class="meta" style="margin-bottom:24px">Partida local. Se pasa el dispositivo en cada turno.</p>
+    <p class="meta" style="margin-bottom:24px">Partida local. Se pasa el dispositivo en cada turno humano; los rivales con IA juegan solos.</p>
     <div class="campo"><label>Jugadores</label>
       <div class="seg">${[2,3,4].map(k=>`<button aria-pressed="${n===k}" onclick="setN(${k})">${k}</button>`).join("")}</div></div>
     ${n===4?`<div class="campo"><label>Modalidad</label><div class="seg">
@@ -1188,22 +1352,43 @@ function vistaSetup(){
       <div class="seg">${opcionesBarajas(n).map(k=>`<button aria-pressed="${cfgTmp.barajas===k}" onclick="setBarajas(${k})">${k}</button>`).join("")}</div></div>
     <div class="campo"><label>Se gana a</label>
       <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfgTmp.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
-    <div class="campo"><label>Nombres</label>
-      ${Array.from({length:n},(_,i)=>`<input value="${esc(cfgTmp.nombres[i]||"Jugador "+(i+1))}" oninput="cfgTmp.nombres[${i}]=this.value">`).join("")}</div>
+    <div class="campo"><label>Quién juega</label>
+      ${Array.from({length:n},(_,i)=>`
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input style="margin-bottom:0;flex:1" value="${esc(cfgTmp.nombres[i]||"Jugador "+(i+1))}" oninput="cfgTmp.nombres[${i}]=this.value">
+        <button aria-pressed="${!!cfgTmp.cpu[i]}" onclick="setCPU(${i},${!cfgTmp.cpu[i]})"
+          style="flex:0 0 auto;padding:9px 13px;border-radius:6px;border:1px solid var(--linea);font:600 13px var(--sans);cursor:pointer;
+            background:${cfgTmp.cpu[i]?"var(--hueso)":"rgba(0,0,0,.2)"};color:${cfgTmp.cpu[i]?"var(--tinta)":"var(--hueso)"}">
+          ${cfgTmp.cpu[i]?"IA":"Humano"}</button>
+      </div>`).join("")}
+      <p class="meta">Toca "Humano"/"IA" para elegir quién controla cada jugador.</p></div>
     <button class="btn" onclick="empezar()">Empezar partida</button></div>`;
 }
 function setN(k){
   cfgTmp.n=k;if(k!==4)cfgTmp.parejas=false;
   if(!opcionesBarajas(k).includes(cfgTmp.barajas))cfgTmp.barajas=k===2?2:3;
-  while(cfgTmp.nombres.length<k)cfgTmp.nombres.push("Jugador "+(cfgTmp.nombres.length+1));vistaSetup();}
+  while(cfgTmp.nombres.length<k)cfgTmp.nombres.push("Jugador "+(cfgTmp.nombres.length+1));
+  while(cfgTmp.cpu.length<k)cfgTmp.cpu.push(false);
+  vistaSetup();}
 function setP(v){cfgTmp.parejas=v;vistaSetup();}
 function setO(v){cfgTmp.objetivo=v;vistaSetup();}
 function setBarajas(v){cfgTmp.barajas=v;vistaSetup();}
-function empezar(){nuevaPartida({nombres:cfgTmp.nombres.slice(0,cfgTmp.n),parejas:cfgTmp.parejas,objetivo:cfgTmp.objetivo,barajas:cfgTmp.barajas});pintar();}
+function setCPU(i,v){
+  cfgTmp.cpu[i]=v;
+  if(v&&/^Jugador \d+$/.test(cfgTmp.nombres[i]||""))cfgTmp.nombres[i]="IA "+(i+1);
+  if(!v&&/^IA \d+$/.test(cfgTmp.nombres[i]||""))cfgTmp.nombres[i]="Jugador "+(i+1);
+  vistaSetup();
+}
+function empezar(){nuevaPartida({nombres:cfgTmp.nombres.slice(0,cfgTmp.n),parejas:cfgTmp.parejas,objetivo:cfgTmp.objetivo,barajas:cfgTmp.barajas,cpu:cfgTmp.cpu.slice(0,cfgTmp.n)});pintar();}
 function pintar(){
   if(!G)return vistaSetup();
+  // a una IA no hace falta pasarle el dispositivo: se salta esa pantalla
+  if(G.fase==="traspaso"&&G.jugadores[G.turno].cpu)G.fase="turno";
   if(G.fase==="traspaso")vistaTraspaso();
-  else if(G.fase==="turno")vistaTurno();
+  else if(G.fase==="turno"){
+    vistaTurno();
+    programarCPU();
+  }
   else if(G.fase==="finMano"||G.fase==="finPartida")vistaFin();
   else vistaSetup();
   reproducirAnuncios();

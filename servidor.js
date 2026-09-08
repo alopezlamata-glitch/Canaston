@@ -90,27 +90,31 @@ function empezarSiEstaLlena(sala){
   });
 }
 
-/* si le toca a un asiento con CPU, que juegue solo (con un pequeño
-   retraso para que se vea venir la jugada) y siga encadenando turnos
-   mientras la partida siga cayendo en asientos de CPU */
-function turnoDeCPU(sala){
+/* si le toca a un asiento con CPU, que juegue sola, pero de una jugada en
+   una jugada (robar, bajar una carta, descartar...) con una pequeña espera
+   entre cada una: así se ve pensar y jugar, en vez de resolver el turno
+   entero de golpe. Sigue encadenando turnos mientras la partida caiga en
+   asientos de CPU. */
+function turnoDeCPU(sala, rechazadas){
   if (!sala.estado || sala.estado.fase !== "turno") return;
   const asiento = sala.estado.turno;
   const jugador = sala.asientos[asiento];
   if (!jugador || !jugador.cpu) return;
+  rechazadas = rechazadas || new Set();
   setTimeout(() => {
     if (!salas.has(sala.id)) return;                 // la sala pudo cerrarse mientras tanto
     if (!sala.estado || sala.estado.fase !== "turno" || sala.estado.turno !== asiento) return;
+    let terminado = true;
     try {
-      Bot.jugarTurno(sala.estado, asiento);
+      terminado = Bot.jugarUnPaso(sala.estado, asiento, null, rechazadas);
     } catch (err){
       console.error("error del bot en la sala " + sala.id + ":", err);
       const j = sala.estado.jugadores[asiento];       // red de seguridad: no dejar la partida colgada
       if (j && j.mano.length) Motor.aplicar(sala.estado, asiento, {tipo:"descartar", carta:j.mano[0].id});
     }
     difundir(sala);
-    turnoDeCPU(sala);
-  }, 900);
+    turnoDeCPU(sala, terminado ? undefined : rechazadas);
+  }, 550 + Math.random() * 450);
 }
 
 /* ── websocket ── */
@@ -165,6 +169,18 @@ wss.on("connection", ws => {
       ws.send(JSON.stringify({tipo:"sentado", sala:sala.id, asiento:libre, ficha:f}));
       empezarSiEstaLlena(sala);
       return difundir(sala);
+    }
+
+    if (m.tipo === "rellenarCPU"){
+      const sala = salas.get(ws.sala);
+      if (!sala) return error("no estás en ninguna sala");
+      if (sala.estado) return error("la partida ya ha empezado");
+      for (let i = 0; i < sala.cfg.plazas; i++)
+        if (!sala.asientos[i]) sala.asientos[i] = {nombre: "CPU " + (i + 1), ficha:null, ws:null, cpu:true};
+      empezarSiEstaLlena(sala);
+      difundir(sala);
+      turnoDeCPU(sala);
+      return;
     }
 
     if (m.tipo === "listar"){

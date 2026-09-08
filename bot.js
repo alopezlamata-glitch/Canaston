@@ -76,42 +76,61 @@ function puntuar(f, pesos){
   return s;
 }
 
-function jugarTurno(e, asiento, pesos){
-  pesos = pesos || cargarPesos();
-  let guardia = 0;
-  const rechazadas = new Set();
-  while (guardia++ < 60){
-    if (e.fase !== "turno" || e.turno !== asiento) return;
+/* hace exactamente una jugada (robar/coger pozo/elegir comodín/bajar algo/
+   descartar) y dice si con eso se ha terminado el turno. Es el paso mínimo
+   que comparten jugarTurno (todo el turno de golpe, para entrenar.js y los
+   tests) y jugarUnPaso (un paso cada vez, para animar el turno online) */
+function unPaso(e, asiento, pesos, rechazadas){
+  if (e.fase !== "turno" || e.turno !== asiento) return true;
 
-    if (e.faseTurno === "robar"){
-      const v = Motor.vistaPara(e, asiento);
-      if (v.pozo.estado === "disponible"){
-        const r = Motor.aplicar(e, asiento, {tipo:"cogerPozo"});
-        if (r.ok) continue;
-        // rechazado (p.ej. te dejaría sin mano y sin nada que cerrar): roba en su lugar
-      }
-      Motor.aplicar(e, asiento, {tipo:"robar"});
-      continue;
-    }
-
+  if (e.faseTurno === "robar"){
     const v = Motor.vistaPara(e, asiento);
-    if (e.fase !== "turno" || e.turno !== asiento) return;   // se acabó el reparto al robar
-
-    if (v.yo.pregunta){
-      Motor.aplicar(e, asiento, {tipo:"elegirMono", carta: decidirComodin(v)});
-      continue;
+    if (v.pozo.estado === "disponible"){
+      const r = Motor.aplicar(e, asiento, {tipo:"cogerPozo"});
+      if (r.ok) return false;
+      // rechazado (p.ej. te dejaría sin mano y sin nada que cerrar): roba en su lugar
     }
+    Motor.aplicar(e, asiento, {tipo:"robar"});
+    return false;
+  }
 
-    const jugada = mejorJugada(v, rechazadas, pesos);
-    if (!jugada) break;
+  const v = Motor.vistaPara(e, asiento);
+  if (e.fase !== "turno" || e.turno !== asiento) return true;   // se acabó el reparto al robar
+
+  if (v.yo.pregunta){
+    Motor.aplicar(e, asiento, {tipo:"elegirMono", carta: decidirComodin(v)});
+    return false;
+  }
+
+  const jugada = mejorJugada(v, rechazadas, pesos);
+  if (jugada){
     const r = Motor.aplicar(e, asiento, jugada.accion);
     if (!r.ok) rechazadas.add(jugada.firma);
+    return false;
   }
 
-  if (e.fase === "turno" && e.turno === asiento && e.faseTurno === "jugar"){
-    const v = Motor.vistaPara(e, asiento);
-    Motor.aplicar(e, asiento, {tipo:"descartar", carta: elegirDescarte(v, pesos)});
+  // no hay más jugadas razonables: cerrar el turno descartando
+  Motor.aplicar(e, asiento, {tipo:"descartar", carta: elegirDescarte(v, pesos)});
+  return true;
+}
+
+function jugarTurno(e, asiento, pesos){
+  pesos = pesos || cargarPesos();
+  const rechazadas = new Set();
+  let guardia = 0;
+  while (guardia++ < 80){
+    if (unPaso(e, asiento, pesos, rechazadas)) return;
   }
+}
+
+/* una sola jugada del turno, para que quien llame (el servidor) pueda
+   difundir el estado y esperar un poco entre una y la siguiente, en vez de
+   resolver el turno entero de golpe. rechazadas hay que mantenerlo entre
+   llamadas del mismo turno (se pasa por fuera) y vaciarlo en el siguiente.
+   Devuelve true cuando el turno ha terminado (se ha descartado, o ya no es
+   su turno por lo que sea). */
+function jugarUnPaso(e, asiento, pesos, rechazadas){
+  return unPaso(e, asiento, pesos || cargarPesos(), rechazadas);
 }
 
 /* ── candidatos posibles con la mano en fase "jugar", puntuados con pesos ── */
@@ -240,7 +259,7 @@ function elegirDescarte(v, pesos){
   return opciones[0].carta.id;
 }
 
-const Bot = { jugarTurno, PESOS_INICIALES, cargarPesos, mejorJugada, elegirDescarte, puntuar };
+const Bot = { jugarTurno, jugarUnPaso, PESOS_INICIALES, cargarPesos, mejorJugada, elegirDescarte, puntuar };
 if (esNode) module.exports = Bot;
 else raiz.Bot = Bot;
 
