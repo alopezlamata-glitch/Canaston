@@ -83,6 +83,46 @@ function enfrentar(pesosA, poolB, nPartidas, objetivo, semillaBase, rnd){
   return total / (nPartidas * 2);
 }
 
+/* la comprobación de "atascado" de jugarDuelo (tope de vueltas) puede
+   colarse: una partida puede quedarse dando vueltas sin terminar de
+   verdad (misma mano, mismo turno, sin avanzar) mucho antes de llegar
+   al tope, sobre todo en mesas de 4 que rara vez salen en el muestreo
+   normal de entrenamiento. Antes de aceptar una mejora como nuevo
+   campeón, se le hace pasar una batería aparte con detección de
+   progreso real (no solo un tope de vueltas) en las mesas más
+   propensas a esto. Si falla aunque sea una, no se acepta. */
+function progresoFirma(e){
+  return e.reparto + ":" + e.turno + ":" + e.faseTurno + ":" +
+    e.jugadores.map(j => j.mano.length).join(",") + ":" + e.taco.length;
+}
+function partidaSinAtascos(pesos, nJugadores, parejas, semilla, objetivo){
+  const rnd = mulberry32(semilla);
+  const nombres = [];
+  for (let i = 0; i < nJugadores; i++) nombres.push("V" + i);
+  const e = Motor.crearPartida({ nombres, parejas, objetivo, barajas: nJugadores === 2 ? 2 : 3, rnd });
+  let vueltas = 0, firmaAnterior = null, sinCambios = 0;
+  const MAX_VUELTAS = 20000;
+  while (e.fase !== "finPartida" && vueltas < MAX_VUELTAS){
+    vueltas++;
+    if (e.fase === "finReparto"){ Motor.aplicar(e, 0, {tipo:"siguienteReparto"}); continue; }
+    Bot.jugarTurno(e, e.turno, pesos);
+    const firma = progresoFirma(e);
+    if (firma === firmaAnterior){
+      sinCambios++;
+      if (sinCambios > 20) return false;
+    } else { sinCambios = 0; firmaAnterior = firma; }
+  }
+  return vueltas < MAX_VUELTAS;
+}
+function validarSinAtascos(pesos, rnd){
+  const mesas = [{n:2,parejas:false}, {n:3,parejas:false}, {n:4,parejas:false}, {n:4,parejas:true}];
+  for (const mesa of mesas)
+    for (let i = 0; i < 3; i++)
+      if (!partidaSinAtascos(pesos, mesa.n, mesa.parejas, Math.floor(rnd() * 1e9), 6000))
+        return false;
+  return true;
+}
+
 function mutar(pesos, rnd, fuerza){
   const hijo = {};
   for (const k in pesos){
@@ -147,7 +187,7 @@ function main(){
       const margen = enfrentar(hijo, pool, partidasPorDuelo, objetivo, semillaBase, rnd);
       if (margen > mejorMargen){ mejorMargen = margen; mejorHijo = hijo; }
     }
-    if (mejorHijo && mejorMargen > 15){    // margen mínimo para no quedarse con ruido
+    if (mejorHijo && mejorMargen > 15 && validarSinAtascos(mejorHijo, rnd)){    // margen mínimo para no quedarse con ruido, y sin atascos en las 4 mesas
       campeon = mejorHijo;
       pool.push(campeon);
       if (pool.length > TAMANO_POOL) pool.shift();
@@ -156,7 +196,10 @@ function main(){
     } else {
       generacionesSinMejora++;
       if (generacionesSinMejora % 5 === 0) fuerzaMutacion *= 0.7;   // si no mejora, busca más cerca
-      console.log(`gen ${g}: sin mejora (mejor intento ${mejorMargen.toFixed(0)}), fuerza mutación ${fuerzaMutacion.toFixed(2)}`);
+      if (mejorHijo && mejorMargen > 15)
+        console.log(`gen ${g}: mejora encontrada (+${mejorMargen.toFixed(0)}) pero rechazada por atascos en la validación, fuerza mutación ${fuerzaMutacion.toFixed(2)}`);
+      else
+        console.log(`gen ${g}: sin mejora (mejor intento ${mejorMargen.toFixed(0)}), fuerza mutación ${fuerzaMutacion.toFixed(2)}`);
     }
     guardarCheckpoint(campeon, pool, fuerzaMutacion, generacionesSinMejora, g);   // progreso a salvo aunque se corte
   }
