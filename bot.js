@@ -63,6 +63,7 @@ const PESOS_INICIALES = {
   pozoTamano: 10,
   pozoValorTapa: 5,
   pozoAyudaAbierto: 8,
+  limpiaAseguradaCoger: 6,   // con la limpia ya sellada, coger pozo no arriesga nada más: compensa más que antes
   esRobar: 5,
   // al descartar (menos puntuación = más seguro de tirar)
   dValor: 12,
@@ -136,11 +137,16 @@ function coger(v, pesos){
   const miGrupo = v.grupos.find(g => g.id === v.miGrupo);
   const claveTapa = claveDe(v.pozo.tapa);
   const yaAbierta = miGrupo.escaleras.some(esc => esc.clave === claveTapa && !esc.canasta);
+  // una vez sellada, una limpia no se puede deshacer (v. cuentaComoLimpia en
+  // motor.js); si el grupo ya tiene una, coger el pozo ya no arriesga nada
+  // de eso -el único "pero" de coger pozo antes de tenerla- así que compensa más
+  const tieneLimpia = miGrupo.escaleras.some(esc => esc.canasta && esc.limpia);
   const fCoger = {
     esCogerPozo: 1,
     pozoTamano: Math.min(1, v.pozo.total / 20),
     pozoValorTapa: valor(v.pozo.tapa) / 50,
-    pozoAyudaAbierto: yaAbierta ? 1 : 0
+    pozoAyudaAbierto: yaAbierta ? 1 : 0,
+    limpiaAseguradaCoger: tieneLimpia ? 1 : 0
   };
   return puntuar(fCoger, pesos) >= puntuar({esRobar:1}, pesos);
 }
