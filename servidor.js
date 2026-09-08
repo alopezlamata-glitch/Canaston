@@ -114,7 +114,7 @@ function turnoDeCPU(sala, rechazadas){
     }
     difundir(sala);
     turnoDeCPU(sala, terminado ? undefined : rechazadas);
-  }, 550 + Math.random() * 450);
+  }, 1400 + Math.random() * 900);
 }
 
 /* ── websocket ── */

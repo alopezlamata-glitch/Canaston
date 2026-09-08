@@ -694,6 +694,7 @@ function htmlCarta(c,o={}){
   if(esJoker(c)||(c.palo&&c.palo.roja))cls.push("roja");
   if(o.sel)cls.push("sel");
   if(o.cls)cls.push(o.cls);
+  if(o.marcar&&c.nueva)cls.push("nueva");
   const r=esJoker(c)?"★":NR[c.rango], p=esJoker(c)?"":c.palo.c;
   return `<div class="${cls.join(" ")}" ${o.src?`data-src="${o.src}" data-id="${c.id}"`:""} style="${o.style||""}">
     <span class="ix">${r}<span class="s">${p||"★"}</span></span>
@@ -724,12 +725,12 @@ function juegosDe(g,propio){
       lat.push(`<div class="cerrada ${e.limpia?"limpia":"sucia"}"
           ${propio?`data-exp="${e.indice}" data-drop="juego" data-i="${e.indice}"`:""}>
         <div class="taquito"><div class="carta borde b3"></div><div class="carta borde b2"></div>
-          <div class="carta borde b1"></div>${htmlCarta(coronaDe(e),{cls:"corona"})}</div>
+          <div class="carta borde b1"></div>${htmlCarta(coronaDe(e),{cls:"corona",marcar:true})}</div>
         <span class="et">${e.bono}<br><i>${e.limpia?"limpia":"sucia"}</i></span></div>`);
     } else {
       tira.push(`<div class="juego" ${propio?`data-drop="juego" data-i="${e.indice}"`:""}>
         <div class="tit">${etiquetaClave(e.clave)}·${e.cartas.length}</div>
-        <div class="cs">${e.cartas.map(x=>htmlCarta(x)).join("")}</div></div>`);
+        <div class="cs">${e.cartas.map(x=>htmlCarta(x,{marcar:true})).join("")}</div></div>`);
     }
   });
   if(propio&&V.yo.esMiTurno)tira.push(`<div class="hueco" data-drop="nuevo">+</div>`);
