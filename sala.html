@@ -460,7 +460,7 @@ function abandonar(){
 }
 
 /* ── vestíbulo ── */
-let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:true, barajas:2};
+let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:true, barajas:2, cpu:false};
 const opcionesBarajas = plazas => plazas===4 ? [3,4] : [2,3];
 let pantallaInicial = "inicio", salasPublicas = [], pollingSalas = null;
 
@@ -573,11 +573,20 @@ function vistaEntrada(){
     ${cfg.plazas===4 ? `<div class="campo"><label>Modalidad</label><div class="seg">
       <button aria-pressed="${!cfg.parejas}" onclick="setPar(false)">Individual</button>
       <button aria-pressed="${cfg.parejas}" onclick="setPar(true)">Por parejas</button></div></div>` : ""}
+    <div class="campo"><label>Rivales</label>
+      <div class="seg">
+        <button aria-pressed="${!cfg.cpu}" onclick="setCpu(false)">Esperar jugadores</button>
+        <button aria-pressed="${cfg.cpu}" onclick="setCpu(true)">Jugar contra la CPU</button>
+      </div>
+      <p class="meta" style="margin-top:7px">${cfg.cpu
+        ? "Empieza al momento, sin esperar a nadie."
+        : "Se espera a que se unan el resto de jugadores."}</p>
+    </div>
     <div class="campo"><label>Barajas</label>
       <div class="seg">${opcionesBarajas(cfg.plazas).map(k=>`<button aria-pressed="${cfg.barajas===k}" onclick="setBarajas(${k})">${k}</button>`).join("")}</div></div>
     <div class="campo"><label>Se gana a</label>
       <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfg.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
-    <div class="campo"><label>Quién puede verla</label>
+    ${cfg.cpu ? "" : `<div class="campo"><label>Quién puede verla</label>
       <div class="seg">
         <button aria-pressed="${cfg.publica}" onclick="setPublica(true)">Pública</button>
         <button aria-pressed="${!cfg.publica}" onclick="setPublica(false)">Privada</button>
@@ -585,8 +594,8 @@ function vistaEntrada(){
       <p class="meta" style="margin-top:7px">${cfg.publica
         ? "Cualquiera puede verla y unirse, sin enlace."
         : "Solo entra quien tenga el enlace o el código."}</p>
-    </div>`}
-    <button class="btn" onclick="entrar('${invitado||""}')">${invitado ? "Entrar" : "Crear sala"}</button>
+    </div>`}`}
+    <button class="btn" onclick="entrar('${invitado||""}')">${invitado ? "Entrar" : (cfg.cpu ? "Jugar contra la CPU" : "Crear sala")}</button>
     ${invitado ? "" : `<p style="margin-top:18px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
       onclick="verPublicas()">Ver salas públicas</button></p>`}
     ${aviso ? `<p class="meta" style="margin-top:16px;color:#e0a29a">${esc(aviso)}</p>` : ""}
@@ -601,11 +610,12 @@ function setPar(v){ cfg.parejas=v; pintar(); }
 function setO(v){ cfg.objetivo=v; pintar(); }
 function setPublica(v){ cfg.publica=v; pintar(); }
 function setBarajas(v){ cfg.barajas=v; pintar(); }
+function setCpu(v){ cfg.cpu=v; if(v)cfg.publica=false; pintar(); }
 function entrar(codigo){
   cfg.nombre = (document.getElementById("nom").value || "").trim() || "Jugador";
   const ir = () => codigo
     ? envio({tipo:"unirse", sala:codigo, nombre:cfg.nombre})
-    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo, publica:cfg.publica, barajas:cfg.barajas});
+    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo, publica:cfg.publica, barajas:cfg.barajas, cpu:cfg.cpu});
   ws && ws.readyState === 1 ? ir() : conectar(ir);
 }
 

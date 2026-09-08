@@ -751,6 +751,13 @@ function cogerPozo(){
   // las cartas con las que robas salen de tu mano
   const n=cartasNecesarias();
   const usadas=j.mano.filter(c=>c.rango===tapa.rango&&!esMono(c)).slice(0,n);
+  // si se usa toda la mano y debajo de la tapa no queda nada que la reponga,
+  // te quedarías sin cartas y sin nada que descartar: igual que al bajar,
+  // hay que guardarse siempre con qué cerrar
+  const quedanDebajo=G.pozo.length+G.pozoTapado.length-1;
+  if(usadas.length===j.mano.length&&quedanDebajo===0){
+    avisar("Tienes que cerrar descartando una carta",true);return pintar();
+  }
   usadas.forEach(c=>j.mano.splice(j.mano.findIndex(x=>x.id===c.id),1));
 
   const nT=G.pozoTapado.length;

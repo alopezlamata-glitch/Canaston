@@ -14,6 +14,7 @@ const fs   = require("fs");
 const path = require("path");
 const { WebSocketServer } = require("ws");
 const Motor = require("./motor.js");
+const Bot   = require("./bot.js");
 
 const PUERTO = process.env.PORT || 8080;
 const RAIZ = __dirname;
@@ -89,6 +90,29 @@ function empezarSiEstaLlena(sala){
   });
 }
 
+/* si le toca a un asiento con CPU, que juegue solo (con un pequeño
+   retraso para que se vea venir la jugada) y siga encadenando turnos
+   mientras la partida siga cayendo en asientos de CPU */
+function turnoDeCPU(sala){
+  if (!sala.estado || sala.estado.fase !== "turno") return;
+  const asiento = sala.estado.turno;
+  const jugador = sala.asientos[asiento];
+  if (!jugador || !jugador.cpu) return;
+  setTimeout(() => {
+    if (!salas.has(sala.id)) return;                 // la sala pudo cerrarse mientras tanto
+    if (!sala.estado || sala.estado.fase !== "turno" || sala.estado.turno !== asiento) return;
+    try {
+      Bot.jugarTurno(sala.estado, asiento);
+    } catch (err){
+      console.error("error del bot en la sala " + sala.id + ":", err);
+      const j = sala.estado.jugadores[asiento];       // red de seguridad: no dejar la partida colgada
+      if (j && j.mano.length) Motor.aplicar(sala.estado, asiento, {tipo:"descartar", carta:j.mano[0].id});
+    }
+    difundir(sala);
+    turnoDeCPU(sala);
+  }, 900);
+}
+
 /* ── websocket ── */
 const wss = new WebSocketServer({ server: servidor });
 
@@ -107,8 +131,14 @@ wss.on("connection", ws => {
       sala.asientos[0] = {nombre: (m.nombre||"Jugador 1").slice(0,14), ficha:f, ws};
       ws.sala = sala.id; ws.asiento = 0;
       ws.send(JSON.stringify({tipo:"sentado", sala:sala.id, asiento:0, ficha:f}));
+      if (m.cpu){
+        for (let i = 1; i < sala.cfg.plazas; i++)
+          sala.asientos[i] = {nombre: "CPU " + i, ficha:null, ws:null, cpu:true};
+      }
       empezarSiEstaLlena(sala);
-      return difundir(sala);
+      difundir(sala);
+      turnoDeCPU(sala);
+      return;
     }
 
     if (m.tipo === "unirse"){
@@ -157,7 +187,9 @@ wss.on("connection", ws => {
       // el asiento lo pone el servidor, nunca el cliente
       const r = Motor.aplicar(sala.estado, ws.asiento, m.accion);
       if (!r.ok) ws.send(JSON.stringify({tipo:"rechazo", mensaje:r.error}));
-      return difundir(sala);
+      difundir(sala);
+      turnoDeCPU(sala);
+      return;
     }
 
     if (m.tipo === "salir"){

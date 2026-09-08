@@ -237,6 +237,19 @@ function maxPuntosSalida(cartas){
   return total;
 }
 function maxAlcanzable(mano, combis){
+  // los comodines que quedan en la mano se le pueden dar a un juego ya
+  // empezado en la mesa, o guardarlos para abrir uno nuevo (donde también
+  // arrastran a las cartas naturales que los acompañarían). Repartirlos
+  // siempre hacia lo ya empezado puede infravalorar lo que de verdad se
+  // puede llegar a bajar, así que se prueban las dos maneras y se coge la
+  // mejor: sigue siendo una cantidad que de verdad se puede alcanzar, solo
+  // que con un reparto de comodines más acertado.
+  return Math.max(
+    maxAlcanzableConReparto(mano, combis, true),
+    maxAlcanzableConReparto(mano, combis, false)
+  );
+}
+function maxAlcanzableConReparto(mano, combis, comodinesParaLoExistente){
   let total = 0;
   const resto = mano.slice();
   (combis||[]).forEach(c => {
@@ -244,10 +257,10 @@ function maxAlcanzable(mano, combis){
     const cerrada = c.cartas.length >= 7 && monos(c.cartas) === 0;
     let cap = cerrada ? 0 : (c.clave === "M" ? 7 - c.cartas.length : 99);
     if (cap <= 0) return;
-    let capM = 3 - monos(c.cartas);
+    let capM = comodinesParaLoExistente ? 3 - monos(c.cartas) : 0;
     for (let i = resto.length - 1; i >= 0 && cap > 0; i--){
       const x = resto[i];
-      const encaja = c.clave === "M" ? esMono(x) : (esMono(x) ? capM > 0 : x.rango === c.clave);
+      const encaja = c.clave === "M" ? (comodinesParaLoExistente && esMono(x)) : (esMono(x) ? capM > 0 : x.rango === c.clave);
       if (!encaja) continue;
       if (c.clave !== "M" && esMono(x)) capM--;
       total += valor(x); resto.splice(i,1); cap--;
@@ -387,6 +400,12 @@ const ACCIONES = {
     const tapa = e.pozo[e.pozo.length - 1];
     const n = cartasNecesarias(e);
     const usadas = j.mano.filter(c => c.rango === tapa.rango && !esMono(c)).slice(0,n);
+    // si se usa toda la mano y debajo de la tapa no queda nada que la reponga,
+    // te quedarías sin cartas y sin nada que descartar: igual que al bajar,
+    // hay que guardarse siempre con qué cerrar
+    const quedanDebajo = e.pozo.length + e.pozoTapado.length - 1;
+    if (usadas.length === j.mano.length && quedanDebajo === 0)
+      return "tienes que cerrar descartando una carta";
     usadas.forEach(c => j.mano.splice(j.mano.findIndex(x => x.id === c.id), 1));
 
     e.pozoRetenido = e.pozo.concat(e.pozoTapado).filter(c => c.id !== tapa.id);
