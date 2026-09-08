@@ -67,7 +67,7 @@ const PESOS_INICIALES = {
   esRobar: 5,
   // al descartar (menos puntuación = más seguro de tirar)
   dValor: 12,
-  dComodin: 40,
+  dComodin: 80,              // tirar un comodín casi siempre regala la mejor carta posible a quien coja el pozo después: arranca con un rechazo muy fuerte
   dTresNegro: 16,
   dClaveAjena: 12,
   dUnica: -6,
