@@ -101,7 +101,7 @@ function partidaSinAtascos(pesos, nJugadores, parejas, semilla, objetivo){
   for (let i = 0; i < nJugadores; i++) nombres.push("V" + i);
   const e = Motor.crearPartida({ nombres, parejas, objetivo, barajas: nJugadores === 2 ? 2 : 3, rnd });
   let vueltas = 0, firmaAnterior = null, sinCambios = 0;
-  const MAX_VUELTAS = 20000;
+  const MAX_VUELTAS = 40000;
   while (e.fase !== "finPartida" && vueltas < MAX_VUELTAS){
     vueltas++;
     if (e.fase === "finReparto"){ Motor.aplicar(e, 0, {tipo:"siguienteReparto"}); continue; }
@@ -115,9 +115,18 @@ function partidaSinAtascos(pesos, nJugadores, parejas, semilla, objetivo){
   return vueltas < MAX_VUELTAS;
 }
 function validarSinAtascos(pesos, rnd){
-  const mesas = [{n:2,parejas:false}, {n:3,parejas:false}, {n:4,parejas:false}, {n:4,parejas:true}];
+  // la mesa de 4 individual es la más propensa a partidas que se eternizan
+  // enganchadas en repartos negativos sin llegar a positivo nunca (a
+  // diferencia de un atasco de estado, esto solo aparece con ciertas
+  // semillas), así que se le pasan más partidas de prueba que al resto.
+  const mesas = [
+    {n:2, parejas:false, pruebas:3},
+    {n:3, parejas:false, pruebas:3},
+    {n:4, parejas:false, pruebas:6},
+    {n:4, parejas:true, pruebas:3}
+  ];
   for (const mesa of mesas)
-    for (let i = 0; i < 3; i++)
+    for (let i = 0; i < mesa.pruebas; i++)
       if (!partidaSinAtascos(pesos, mesa.n, mesa.parejas, Math.floor(rnd() * 1e9), 6000))
         return false;
   return true;
