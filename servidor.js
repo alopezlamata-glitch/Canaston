@@ -74,7 +74,7 @@ function difundir(sala){
       asiento: i,
       plazas: sala.cfg.plazas,
       objetivo: sala.cfg.objetivo,
-      jugadores: sala.asientos.map(x => x ? {nombre:x.nombre, conectado: !!(x.ws && x.ws.readyState===1)} : null),
+      jugadores: sala.asientos.map(x => x ? {nombre:x.nombre, conectado: !!(x.ws && x.ws.readyState===1), cpu: !!x.cpu} : null),
       vista: sala.estado ? Motor.vistaPara(sala.estado, i) : null
     }));
   });
@@ -135,9 +135,10 @@ wss.on("connection", ws => {
       sala.asientos[0] = {nombre: (m.nombre||"Jugador 1").slice(0,14), ficha:f, ws};
       ws.sala = sala.id; ws.asiento = 0;
       ws.send(JSON.stringify({tipo:"sentado", sala:sala.id, asiento:0, ficha:f}));
-      if (m.cpu){
+      if (Array.isArray(m.cpuAsientos)){
         for (let i = 1; i < sala.cfg.plazas; i++)
-          sala.asientos[i] = {nombre: "CPU " + i, ficha:null, ws:null, cpu:true};
+          if (m.cpuAsientos[i])
+            sala.asientos[i] = {nombre: "CPU " + (i + 1), ficha:null, ws:null, cpu:true};
       }
       empezarSiEstaLlena(sala);
       difundir(sala);

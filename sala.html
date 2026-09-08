@@ -460,7 +460,7 @@ function abandonar(){
 }
 
 /* ── vestíbulo ── */
-let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:true, barajas:2, cpu:false};
+let cfg = {nombre:"", plazas:2, parejas:false, objetivo:10000, publica:true, barajas:2, cpuAsientos:[false,false,false,false]};
 const opcionesBarajas = plazas => plazas===4 ? [3,4] : [2,3];
 let pantallaInicial = "inicio", salasPublicas = [], pollingSalas = null;
 
@@ -574,19 +574,23 @@ function vistaEntrada(){
       <button aria-pressed="${!cfg.parejas}" onclick="setPar(false)">Individual</button>
       <button aria-pressed="${cfg.parejas}" onclick="setPar(true)">Por parejas</button></div></div>` : ""}
     <div class="campo"><label>Rivales</label>
-      <div class="seg">
-        <button aria-pressed="${!cfg.cpu}" onclick="setCpu(false)">Esperar jugadores</button>
-        <button aria-pressed="${cfg.cpu}" onclick="setCpu(true)">Jugar contra la CPU</button>
-      </div>
-      <p class="meta" style="margin-top:7px">${cfg.cpu
-        ? "Empieza al momento, sin esperar a nadie."
-        : "Se espera a que se unan el resto de jugadores."}</p>
+      ${Array.from({length:cfg.plazas-1},(_,idx)=>{
+        const i=idx+1, esCpu=!!cfg.cpuAsientos[i];
+        return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <span class="meta" style="flex:1">Jugador ${i+1}</span>
+          <button aria-pressed="${esCpu}" onclick="setCpuAsiento(${i},${!esCpu})"
+            style="flex:0 0 auto;padding:9px 13px;border-radius:6px;border:1px solid var(--linea);font:600 13px var(--sans);cursor:pointer;
+              background:${esCpu?"var(--hueso)":"rgba(0,0,0,.2)"};color:${esCpu?"var(--tinta)":"var(--hueso)"}">
+            ${esCpu?"IA":"Esperar"}</button>
+        </div>`;
+      }).join("")}
+      <p class="meta">"IA" para que juegue la máquina desde ya; "Esperar" para dejar el asiento libre hasta que se una alguien.</p>
     </div>
     <div class="campo"><label>Barajas</label>
       <div class="seg">${opcionesBarajas(cfg.plazas).map(k=>`<button aria-pressed="${cfg.barajas===k}" onclick="setBarajas(${k})">${k}</button>`).join("")}</div></div>
     <div class="campo"><label>Se gana a</label>
       <div class="seg">${[6000,10000].map(k=>`<button aria-pressed="${cfg.objetivo===k}" onclick="setO(${k})">${k.toLocaleString("es")}</button>`).join("")}</div></div>
-    ${cfg.cpu ? "" : `<div class="campo"><label>Quién puede verla</label>
+    ${todosLosDemasSonIA(cfg) ? "" : `<div class="campo"><label>Quién puede verla</label>
       <div class="seg">
         <button aria-pressed="${cfg.publica}" onclick="setPublica(true)">Pública</button>
         <button aria-pressed="${!cfg.publica}" onclick="setPublica(false)">Privada</button>
@@ -595,7 +599,7 @@ function vistaEntrada(){
         ? "Cualquiera puede verla y unirse, sin enlace."
         : "Solo entra quien tenga el enlace o el código."}</p>
     </div>`}`}
-    <button class="btn" onclick="entrar('${invitado||""}')">${invitado ? "Entrar" : (cfg.cpu ? "Jugar contra la CPU" : "Crear sala")}</button>
+    <button class="btn" onclick="entrar('${invitado||""}')">${invitado ? "Entrar" : (todosLosDemasSonIA(cfg) ? "Jugar contra la CPU" : "Crear sala")}</button>
     ${invitado ? "" : `<p style="margin-top:18px"><button class="btn ghost" style="font-size:12.5px;padding:7px 12px"
       onclick="verPublicas()">Ver salas públicas</button></p>`}
     ${aviso ? `<p class="meta" style="margin-top:16px;color:#e0a29a">${esc(aviso)}</p>` : ""}
@@ -610,12 +614,20 @@ function setPar(v){ cfg.parejas=v; pintar(); }
 function setO(v){ cfg.objetivo=v; pintar(); }
 function setPublica(v){ cfg.publica=v; pintar(); }
 function setBarajas(v){ cfg.barajas=v; pintar(); }
-function setCpu(v){ cfg.cpu=v; if(v)cfg.publica=false; pintar(); }
+function todosLosDemasSonIA(c){
+  for(let i=1;i<c.plazas;i++) if(!c.cpuAsientos[i]) return false;
+  return true;
+}
+function setCpuAsiento(i,v){
+  cfg.cpuAsientos[i]=v;
+  if(todosLosDemasSonIA(cfg))cfg.publica=false;
+  pintar();
+}
 function entrar(codigo){
   cfg.nombre = (document.getElementById("nom").value || "").trim() || "Jugador";
   const ir = () => codigo
     ? envio({tipo:"unirse", sala:codigo, nombre:cfg.nombre})
-    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo, publica:cfg.publica, barajas:cfg.barajas, cpu:cfg.cpu});
+    : envio({tipo:"crear", nombre:cfg.nombre, plazas:cfg.plazas, parejas:cfg.parejas, objetivo:cfg.objetivo, publica:cfg.publica, barajas:cfg.barajas, cpuAsientos:cfg.cpuAsientos.slice(0,cfg.plazas)});
   ws && ws.readyState === 1 ? ir() : conectar(ir);
 }
 
@@ -662,7 +674,7 @@ function vistaEspera(){
       ? `Esperando a ${faltan} jugador${faltan===1?"":"es"} más<span class="puntitos"><i></i><i></i><i></i></span>`
       : "La mesa está completa, empezando…"}</p>
     ${INFO.jugadores.map((j,i)=>`<div class="placa fila-entra" style="animation-delay:${i*70}ms;margin-bottom:7px;display:inline-flex">
-      <b>${j?esc(j.nombre):"—"}</b><span class="meta">asiento ${i+1}${j&&!j.conectado?" · desconectado":""}</span></div><br>`).join("")}
+      <b>${j?esc(j.nombre):"—"}</b><span class="meta">asiento ${i+1}${j&&j.cpu?" · IA":j&&!j.conectado?" · desconectado":""}</span></div><br>`).join("")}
     <div class="campo" style="margin-top:22px"><label>Enlace de invitación</label>
       <input readonly value="${esc(enlace)}" onclick="this.select()"></div>
     ${navigator.share?`<button class="btn" onclick="compartir('${esc(enlace)}')">Compartir</button>
