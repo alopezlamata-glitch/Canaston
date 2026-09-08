@@ -68,6 +68,7 @@ const PESOS_INICIALES = {
   // al descartar (menos puntuación = más seguro de tirar)
   dValor: 12,
   dComodin: 80,              // tirar un comodín casi siempre regala la mejor carta posible a quien coja el pozo después: arranca con un rechazo muy fuerte
+  dComodinPozoGrande: 40,    // y pesa aún más si el pozo que se llevaría de paso ya es grande
   dTresNegro: 16,
   dClaveAjena: 12,
   dUnica: -6,
@@ -342,11 +343,13 @@ function elegirDescarte(v, pesos){
   const clavesAjenas = new Set();
   v.grupos.forEach(g => { if (g.id !== v.miGrupo) g.escaleras.forEach(e => clavesAjenas.add(e.clave)); });
 
+  const pozoTam = Math.min(1, v.pozo.total / 20);
   const opciones = mano.map(c => {
     const repetidas = mano.filter(x => x.rango === c.rango && !esMono(x)).length;
     const f = {
       dValor: valor(c) / 50,
       dComodin: esMono(c) ? 1 : 0,
+      dComodinPozoGrande: esMono(c) ? pozoTam : 0,   // regalar un comodín pesa más cuanto más gordo esté ya el pozo que se lleva quien lo coja
       dTresNegro: esTresNegro(c) ? 1 : 0,
       dClaveAjena: (!esMono(c) && clavesAjenas.has(c.rango)) ? 1 : 0,
       dUnica: (!esMono(c) && !esTresNegro(c) && repetidas === 1) ? 1 : 0,
