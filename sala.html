@@ -1007,12 +1007,18 @@ function unVueloFlor(dorsoHtml,fenteHtml,r0,r1,retraso,dur,alAterrizar){
   giro.onfinish=fin;
   setTimeout(fin,retraso+dur+400);           // red de seguridad
 }
+function origenDeJugador(asiento){
+  if(asiento===V.asiento)return document.querySelector(".mano");
+  const gid=grupoDeAsiento(asiento);
+  return document.querySelector('.asiento[data-grupo="'+gid+'"] .abanico');
+}
 function vuelos(sucesos){
   if(!sucesos.length)return;
   const robas=sucesos.filter(s=>s.tipo==="roba");
   const flores=sucesos.filter(s=>s.tipo==="flor");
   const cogePozo=sucesos.find(s=>s.tipo==="cogePozo");
-  if(!robas.length&&!flores.length&&!cogePozo)return;
+  const descarta=sucesos.find(s=>s.tipo==="descarta");
+  if(!robas.length&&!flores.length&&!cogePozo&&!descarta)return;
   const origenTaco=rectDe('[data-drop="taco"] .stack');
   const origenPozo=rectDe('[data-drop="pozo"] .stack');
   const pendientes=new Map();
@@ -1044,6 +1050,19 @@ function vuelos(sucesos){
       const r1=el.getBoundingClientRect();
       ocultar(el);
       unVuelo(htmlDorso(""),origenPozo,r1,cursor,dur,()=>revelar(el));
+      cursor+=paso;
+    }
+  }
+  // el descarte es la jugada que cierra el turno: sin este vuelo, la carta
+  // nueva del pozo aparecía de golpe al redibujar y no se notaba quién
+  // había tirado qué (sobre todo si jugaba la CPU, que no arrastra nada)
+  if(descarta){
+    const origenEl=origenDeJugador(descarta.asiento);
+    const destino=document.querySelector('[data-drop="pozo"] .stack');
+    if(origenEl&&destino){
+      const r0=origenEl.getBoundingClientRect(), r1=destino.getBoundingClientRect();
+      ocultar(destino);
+      unVuelo(htmlCarta(descarta.carta),r0,r1,cursor,dur,()=>revelar(destino));
       cursor+=paso;
     }
   }

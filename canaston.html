@@ -900,17 +900,27 @@ function descartar(cartaId){
     }
     g.abierto=true;
   }
+  const eraCPU=!!j.cpu;
   const seVa=j.mano.length===1;   // se puede cerrar sin canastas, a costa de los negativos
-  const carta=j.mano.splice(i,1)[0];G.pozo.push(carta);
+  const carta=j.mano.splice(i,1)[0];G.pozo.push(carta);G.pozoResaltado=carta.id;
   if(esMono(carta))G.congeladores.push(carta);
   if(esTresNegro(carta))anunciar("tapón","tapon");
   if(j.mano.length===1)anunciar("pumba","pumba");   // se cruza en el pozo hasta que alguien lo robe
   cerrarSellos(g);
   if(seVa)return cerrarMano(j.nombre+" ha cerrado",g.id);
-  g.turnos++;
-  reiniciarTurno();
-  G.turno=(G.turno+1)%G.jugadores.length;
-  G.faseTurno="robar";G.fase="traspaso";avisar("");pintar();
+  const avanzar=()=>{
+    G.pozoResaltado=null;G.pausaTrasDescarte=false;
+    g.turnos++;
+    reiniciarTurno();
+    G.turno=(G.turno+1)%G.jugadores.length;
+    G.faseTurno="robar";G.fase="traspaso";avisar("");pintar();
+  };
+  // si descarta una IA, se deja un instante la carta bien visible en el pozo
+  // antes de pasar turno; si no, se notaría solo al pasar el dispositivo
+  if(eraCPU){
+    G.pausaTrasDescarte=true;avisar("");pintar();
+    setTimeout(avanzar,900);
+  } else avanzar();
 }
 function siguienteMano(){G.repartidor=(G.repartidor+1)%G.jugadores.length;repartirMano();pintar();}
 function abandonarPartida(){
@@ -1059,13 +1069,13 @@ function pasoDeBot(){
 // el siguiente paso si el turno sigue siendo de la IA
 let cpuProgramado=false;
 function programarCPU(){
-  if(cpuProgramado||!G||G.fase!=="turno")return;
+  if(cpuProgramado||!G||G.fase!=="turno"||G.pausaTrasDescarte)return;
   const j=G.jugadores[G.turno];
   if(!j||!j.cpu)return;
   cpuProgramado=true;
   setTimeout(()=>{
     cpuProgramado=false;
-    if(!G||G.fase!=="turno")return;
+    if(!G||G.fase!=="turno"||G.pausaTrasDescarte)return;
     const jAhora=G.jugadores[G.turno];
     if(!jAhora||!jAhora.cpu)return;
     pasoDeBot();
@@ -1080,7 +1090,7 @@ const ordenRango=r=>r===0?102:r===2?101:r===3?0:r;
 function htmlCarta(c,o={}){
   const cls=["carta"];
   if(esJoker(c)||(c.palo&&c.palo.roja))cls.push("roja");
-  if(o.marcar&&c.nueva)cls.push("nueva");
+  if((o.marcar&&c.nueva)||o.resaltar)cls.push("nueva");
   if(o.sel)cls.push("sel");
   if(o.cls)cls.push(o.cls);
   const r=esJoker(c)?"★":NR[c.rango],p=esJoker(c)?"":c.palo.c;
@@ -1200,7 +1210,7 @@ function vistaTurno(){
             + (!G.pozoRetenido&&G.congeladores?G.congeladores.filter(c=>!tapa||c.id!==tapa.id)
                 .map((c,k)=>htmlCarta(c,{cls:"cruzada",style:"transform:rotate(90deg) translateX("+(k*5-4)+"px)"})).join(""):"")
             + (tapa?htmlCarta(tapa,{cls:esMono(tapa)?"cruzada arriba":"tapa",
-                 style:esMono(tapa)?"transform:rotate(90deg)":""}):htmlDorso("","opacity:.3"))}
+                 style:esMono(tapa)?"transform:rotate(90deg)":"",resaltar:tapa.id===G.pozoResaltado}):htmlDorso("","opacity:.3"))}
           ${!G.pozoRetenido&&G.pozo.length+G.pozoTapado.length?`<span class="marca">${G.pozo.length+G.pozoTapado.length}</span>`:""}
         </div>
         <span class="pie">${G.pozoRetenido?"apartado":robando?esc(estadoPozo()):""}</span>
