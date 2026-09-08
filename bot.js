@@ -76,8 +76,12 @@ const PESOS_INICIALES = {
   dTresNegro: 6,
   // un tres negro tapona el pozo: mientras esté encima nadie puede
   // cogerlo. Con un pozo grande ya formado, taparlo con un tres negro
-  // (que en la mano no vale nada) suele compensar más que guardarlo
-  dTresNegroPozoGrande: -25,
+  // (que en la mano no vale nada) suele compensar más que guardarlo.
+  // (Un valor de partida demasiado agresivo aquí -se probó -25 y -15-
+  // combinado con las características de escasez y de presión sobre el
+  // rival volvía las partidas de 4 individual muy propensas a no
+  // terminar nunca; -4 se comprobó limpio en 20 partidas de prueba.)
+  dTresNegroPozoGrande: -4,
   dClaveAjena: 12,
   dUnica: -6,
   dEscasez: -5,             // una clave ya muy vista es más segura de tirar: a nadie le va a faltar mucho para tenerla completa igualmente
