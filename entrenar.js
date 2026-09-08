@@ -65,21 +65,42 @@ function mutar(pesos, rnd, fuerza){
   return hijo;
 }
 
+const RUTA_PESOS = path.join(__dirname, "pesos-bot.json");
+const RUTA_ESTADO = path.join(__dirname, ".entrenamiento-estado.json");
+
+function guardarCheckpoint(campeon, fuerzaMutacion, generacionesSinMejora, gCompletada){
+  fs.writeFileSync(RUTA_PESOS, JSON.stringify(campeon, null, 2) + "\n");
+  fs.writeFileSync(RUTA_ESTADO, JSON.stringify({campeon, fuerzaMutacion, generacionesSinMejora, gCompletada}, null, 2) + "\n");
+}
+
 function main(){
   const generaciones = parseInt(process.argv[2] || "40", 10);
   const partidasPorDuelo = parseInt(process.argv[3] || "24", 10);
   const hijosPorGeneracion = parseInt(process.argv[4] || "6", 10);
   const objetivo = 6000;      // partidas cortas: entrena más rápido y el criterio (ganar) es el mismo
 
-  const rnd = mulberry32(12345);
+  const rnd = mulberry32(Date.now() >>> 0);
   let campeon = Object.assign({}, Bot.PESOS_INICIALES);
   let fuerzaMutacion = 0.5;
   let generacionesSinMejora = 0;
+  let gInicio = 1;
 
-  console.log("Empezando entrenamiento:", generaciones, "generaciones,", partidasPorDuelo, "partidas por duelo,", hijosPorGeneracion, "hijos.");
+  // reanudar si ya había un entrenamiento a medias (p.ej. si se cortó por tiempo)
+  if (fs.existsSync(RUTA_ESTADO)){
+    try {
+      const estado = JSON.parse(fs.readFileSync(RUTA_ESTADO, "utf8"));
+      campeon = estado.campeon;
+      fuerzaMutacion = estado.fuerzaMutacion;
+      generacionesSinMejora = estado.generacionesSinMejora;
+      gInicio = estado.gCompletada + 1;
+      console.log("Reanudando desde la generación", gInicio, "(estado guardado encontrado).");
+    } catch { console.log("No se pudo leer el estado guardado, se empieza de cero."); }
+  }
+
+  console.log("Entrenamiento:", generaciones, "generaciones,", partidasPorDuelo, "partidas por duelo,", hijosPorGeneracion, "hijos. Empezando en gen", gInicio + ".");
   const t0 = Date.now();
 
-  for (let g = 1; g <= generaciones; g++){
+  for (let g = gInicio; g <= generaciones; g++){
     let mejorHijo = null, mejorMargen = 0;
     for (let h = 0; h < hijosPorGeneracion; h++){
       const hijo = mutar(campeon, rnd, fuerzaMutacion);
@@ -96,9 +117,10 @@ function main(){
       if (generacionesSinMejora % 5 === 0) fuerzaMutacion *= 0.7;   // si no mejora, busca más cerca
       console.log(`gen ${g}: sin mejora (mejor intento ${mejorMargen.toFixed(0)}), fuerza mutación ${fuerzaMutacion.toFixed(2)}`);
     }
+    guardarCheckpoint(campeon, fuerzaMutacion, generacionesSinMejora, g);   // progreso a salvo aunque se corte
   }
 
-  fs.writeFileSync(path.join(__dirname, "pesos-bot.json"), JSON.stringify(campeon, null, 2) + "\n");
+  fs.unlinkSync(RUTA_ESTADO);
   console.log("Listo en", ((Date.now()-t0)/1000).toFixed(1), "s. Pesos guardados en pesos-bot.json:");
   console.log(campeon);
 }
