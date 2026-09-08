@@ -1392,8 +1392,10 @@ function setCPU(i,v){
 function empezar(){nuevaPartida({nombres:cfgTmp.nombres.slice(0,cfgTmp.n),parejas:cfgTmp.parejas,objetivo:cfgTmp.objetivo,barajas:cfgTmp.barajas,cpu:cfgTmp.cpu.slice(0,cfgTmp.n)});pintar();}
 function pintar(){
   if(!G)return vistaSetup();
-  // a una IA no hace falta pasarle el dispositivo: se salta esa pantalla
-  if(G.fase==="traspaso"&&G.jugadores[G.turno].cpu)G.fase="turno";
+  // a una IA no hace falta pasarle el dispositivo, y si solo hay un humano
+  // en la partida (el resto son IA) tampoco hay a quién pasárselo nunca
+  const soloUnHumano=G.jugadores.filter(j=>!j.cpu).length<=1;
+  if(G.fase==="traspaso"&&(G.jugadores[G.turno].cpu||soloUnHumano))G.fase="turno";
   if(G.fase==="traspaso")vistaTraspaso();
   else if(G.fase==="turno"){
     vistaTurno();
@@ -1441,11 +1443,11 @@ function elementoDestino(v){
   const k=esJoker(v.carta)?0:v.carta.rango;
   return document.querySelector('.monton[data-rango="'+k+'"]')||document.querySelector(".mano");
 }
-function unVuelo(carta,r0,r1,retraso,dur,alAterrizar){
+function unVuelo(html,r0,r1,retraso,dur,alAterrizar){
   const el=document.createElement("div");
   el.className="vuelo";
   el.style.cssText="left:"+r0.left+"px;top:"+r0.top+"px;width:"+r0.width+"px;height:"+r0.height+"px";
-  el.innerHTML=htmlCarta(carta);
+  el.innerHTML=html;
   const c=el.firstElementChild;
   c.style.width="100%";c.style.height="100%";
   document.body.appendChild(el);
@@ -1480,10 +1482,14 @@ function reproducirVuelos(){
     }
     return {v,el,r1:el?el.getBoundingClientRect():null};
   });
+  // si le toca a una IA, sus cartas robadas vuelan boca abajo: son suyas, no
+  // se enseñan al humano que mira. La flor es la excepción: es pública siempre.
+  const ocultarCara=x=>x.v.hacia==="mano"&&G.jugadores[G.turno].cpu;
   lista.forEach((x,i)=>{
     const r0=origenes[x.v.desde];
     if(!r0||!x.r1){if(x.el)x.el.style.visibility="";return;}
-    unVuelo(x.v.carta,r0,x.r1,i*paso,dur,()=>{
+    const html=ocultarCara(x)?htmlDorso(""):htmlCarta(x.v.carta);
+    unVuelo(html,r0,x.r1,i*paso,dur,()=>{
       const n=(pendientes.get(x.el)||1)-1;
       pendientes.set(x.el,n);
       if(n<=0)x.el.style.visibility="";
