@@ -59,6 +59,19 @@ const PESOS_INICIALES = {
   desperdiciaVentaja: -3,    // pasar (guardarse cartas) cuando el rival todavía no tiene positivo desaprovecha esa ventaja
   urgenciaRival: 3,          // el rival con la mano más corta se está acercando a cerrar: no conviene dejar nada bueno sin bajar
   desperdiciaUrgencia: -3,   // pasar cuando el rival puede cerrar pronto desaprovecha lo que aún se podía bajar
+  // ni el modelo tenía en cuenta el coste de oportunidad de gastar cartas
+  // ahora: ni lo que cuesta dispersarse en vez de rematar lo ya empezado,
+  // ni lo que cuesta quedarte sin munición para pescar un pozo más adelante
+  abrirSinAportar: -6,       // abrir algo nuevo que no cierra ni logra positivo, teniendo ya otra escalera a medias que alimentar
+  // esta jugada te deja a 0 copias de esa clave en mano, y no logra
+  // positivo a cambio: adiós a poder pescar un pozo de esa clave. (Un
+  // valor de partida más agresivo -se probó -8, -4, -2, -1- volvía las
+  // partidas de 4 individual muy propensas a no terminar nunca -parece
+  // que penalizar esto con fuerza empuja a acumular cartas sin bajar
+  // nunca lo suficiente como para que alguien llegue a positivo-; -0.5
+  // se comprobó al mismo nivel de ruido de fondo que la base sin esta
+  // característica.)
+  agotaMunicion: -0.5,
   // ¿merece la pena coger el pozo, o mejor robar del taco? antes era
   // automático (si se podía, se cogía); ahora también se aprende
   esCogerPozo: 20,
@@ -292,6 +305,12 @@ function mejorJugada(v, rechazadas, pesos){
       const escasezClave = cierraConComodin ? escasez(v, esc.clave) : 0;
       const cierraSucioSinLimpia = cierraConComodin && limpiasYaMiGrupo === 0 ? 1 : 0;
       const mBaja = manoBaja(1);
+      // si esta carta es la última que me queda de esa clave, después de
+      // jugarla ya no puedo usar esa clave para pescar un pozo futuro
+      // (hacen falta 2-3 iguales en mano para poder cogerlo). Si esta
+      // jugada no logra positivo, ese coste no compensa nada a cambio.
+      const naturalesEnMano = esMono(carta) ? 99 : mano.filter(c => !esMono(c) && c.rango === carta.rango).length;
+      const agotaMunicion = (!esMono(carta) && !lograPositivo && naturalesEnMano <= 1) ? 1 : 0;
       const f = {
         valor: valor(carta) / 50,
         cierra: cierra ? 1 : 0,
@@ -306,7 +325,8 @@ function mejorJugada(v, rechazadas, pesos){
         escasezXcierreSucio: cierraSucioSinLimpia * escasezClave,
         pozoAyudaClave: cierraConComodin ? ayudaPozo(v, esc.clave) : 0,
         rivalSinPositivo: rivalVulnerable,
-        urgenciaRival: urgencia
+        urgenciaRival: urgencia,
+        agotaMunicion
       };
       candidatos.push({firma, costo:1, accion:{tipo:"añadir", escalera:esc.indice, carta:carta.id}, features:f});
     });
@@ -314,6 +334,10 @@ function mejorJugada(v, rechazadas, pesos){
 
   const yaAMedias = new Set(miGrupo.escaleras.filter(e => !e.canasta).map(e => e.clave));
   const noAbierto = miGrupo.abierto ? 0 : 1;
+  // abrir algo nuevo mientras ya hay otra escalera a medias es dispersarse:
+  // ese trío nuevo no cierra nada ni logra positivo, y mientras tanto deja
+  // de alimentarse lo que ya se había empezado
+  const hayAlgoAMedias = miGrupo.escaleras.some(e => !e.canasta) ? 1 : 0;
 
   // abrir un juego nuevo con naturales del mismo número
   const porRango = new Map();
@@ -329,13 +353,15 @@ function mejorJugada(v, rechazadas, pesos){
     if (cs.length >= 3){
       const media = cs.reduce((s,c) => s + valor(c), 0) / cs.length / 50;
       const f = { valor:media, esApertura:1, noAbiertoApertura:noAbierto, numCartas:3/7,
-                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
+                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
+                  abrirSinAportar: hayAlgoAMedias, agotaMunicion: cs.length <= 3 ? 1 : 0 };
       candidatos.push({firma, costo:3, accion:{tipo:"abrir", carta:cs[0].id}, features:f});
     } else if (cs.length === 2 && mano.some(esMono)){
       const media = cs.reduce((s,c) => s + valor(c), 0) / cs.length / 50;
       const f = { valor:media, esApertura:1, noAbiertoApertura:noAbierto, esAperturaAsistida:1,
                   comodinUsado: 1/3, numCartas:3/7, manoBajaSinPositivo: manoBaja(3),
-                  escasez: escasez(v, rango), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
+                  escasez: escasez(v, rango), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
+                  abrirSinAportar: hayAlgoAMedias, agotaMunicion: 1 };
       candidatos.push({firma, costo:3, accion:{tipo:"abrir", carta:cs[0].id}, features:f});
     }
   });
@@ -345,7 +371,8 @@ function mejorJugada(v, rechazadas, pesos){
     const negros = mano.filter(esTresNegro);
     if (negros.length >= 3){
       const f = { esApertura:1, esTapon:1, noAbiertoApertura:noAbierto, numCartas:3/7,
-                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
+                  manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
+                  abrirSinAportar: hayAlgoAMedias };
       candidatos.push({firma:"abrir:3", costo:3, accion:{tipo:"abrir", carta:negros[0].id}, features:f});
     }
   }
@@ -355,7 +382,8 @@ function mejorJugada(v, rechazadas, pesos){
     const monos = mano.filter(esMono);
     if (monos.length >= 5){
       const f = { esApertura:1, esComodinMeld:1, noAbiertoApertura:noAbierto, numCartas:5/7,
-                  manoBajaSinPositivo: manoBaja(5), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia };
+                  manoBajaSinPositivo: manoBaja(5), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
+                  abrirSinAportar: hayAlgoAMedias };
       candidatos.push({firma:"abrir:M", costo:5, accion:{tipo:"abrir", carta:monos[0].id}, features:f});
     }
   }
