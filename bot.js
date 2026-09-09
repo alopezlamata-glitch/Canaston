@@ -63,6 +63,14 @@ const PESOS_INICIALES = {
   // ahora: ni lo que cuesta dispersarse en vez de rematar lo ya empezado,
   // ni lo que cuesta quedarte sin munición para pescar un pozo más adelante
   abrirSinAportar: -6,       // abrir algo nuevo que no cierra ni logra positivo, teniendo ya otra escalera a medias que alimentar
+  // (probado también un empuje por "el taco se está acabando, dense
+  // prisa" -tacoBajo/desperdiciaTacoBajo-, pero combinado con esto volvía
+  // las partidas de 4 individual muy propensas a no terminar nunca en
+  // casi cualquier magnitud; se descarta esa parte por ahora. Valores de
+  // partida más agresivos aquí -3 y -2- también rompían combinados;
+  // calibrados a 1.5 y -1 vuelven al ruido de fondo de la base)
+  vaciaManoPositivo: 1.5,    // con el positivo ya conseguido, las cartas en mano solo puntúan en contra: mejor bajarlo todo
+  desperdiciaPositivo: -1,   // pasar (guardarse cartas) con el positivo ya conseguido no protege nada y deja puntos en la mano
   // esta jugada te deja a 0 copias de esa clave en mano, y no logra
   // positivo a cambio: adiós a poder pescar un pozo de esa clave. (Un
   // valor de partida más agresivo -se probó -8, -4, -2, -1- volvía las
@@ -286,6 +294,11 @@ function mejorJugada(v, rechazadas, pesos){
   const rivalVulnerable = rivalSinPositivo(v);
   const urgencia = urgenciaRival(v);
   const limpiasYaMiGrupo = miGrupo.escaleras.filter(e => e.canasta && e.limpia).length;
+  // una vez conseguido el positivo, guardarse cartas ya no protege nada
+  // (no hay ningún objetivo más que proteger reservando munición o sin
+  // dispersarse): al contrario, las cartas que se quedan en la mano
+  // puntúan en contra, así que ahora conviene vaciarla cuanto antes
+  const yaPositivo = miGrupo.positivo;
 
   // añadir una carta a un juego propio ya empezado
   miGrupo.escaleras.forEach(esc => {
@@ -310,7 +323,7 @@ function mejorJugada(v, rechazadas, pesos){
       // (hacen falta 2-3 iguales en mano para poder cogerlo). Si esta
       // jugada no logra positivo, ese coste no compensa nada a cambio.
       const naturalesEnMano = esMono(carta) ? 99 : mano.filter(c => !esMono(c) && c.rango === carta.rango).length;
-      const agotaMunicion = (!esMono(carta) && !lograPositivo && naturalesEnMano <= 1) ? 1 : 0;
+      const agotaMunicion = (!esMono(carta) && !lograPositivo && !yaPositivo && naturalesEnMano <= 1) ? 1 : 0;
       const f = {
         valor: valor(carta) / 50,
         cierra: cierra ? 1 : 0,
@@ -326,7 +339,8 @@ function mejorJugada(v, rechazadas, pesos){
         pozoAyudaClave: cierraConComodin ? ayudaPozo(v, esc.clave) : 0,
         rivalSinPositivo: rivalVulnerable,
         urgenciaRival: urgencia,
-        agotaMunicion
+        agotaMunicion,
+        vaciaManoPositivo: yaPositivo ? 1 : 0
       };
       candidatos.push({firma, costo:1, accion:{tipo:"añadir", escalera:esc.indice, carta:carta.id}, features:f});
     });
@@ -336,8 +350,10 @@ function mejorJugada(v, rechazadas, pesos){
   const noAbierto = miGrupo.abierto ? 0 : 1;
   // abrir algo nuevo mientras ya hay otra escalera a medias es dispersarse:
   // ese trío nuevo no cierra nada ni logra positivo, y mientras tanto deja
-  // de alimentarse lo que ya se había empezado
-  const hayAlgoAMedias = miGrupo.escaleras.some(e => !e.canasta) ? 1 : 0;
+  // de alimentarse lo que ya se había empezado. Una vez conseguido el
+  // positivo esto ya no importa: mejor bajar lo que sea con tal de vaciar
+  // la mano.
+  const hayAlgoAMedias = (!yaPositivo && miGrupo.escaleras.some(e => !e.canasta)) ? 1 : 0;
 
   // abrir un juego nuevo con naturales del mismo número
   const porRango = new Map();
@@ -354,14 +370,16 @@ function mejorJugada(v, rechazadas, pesos){
       const media = cs.reduce((s,c) => s + valor(c), 0) / cs.length / 50;
       const f = { valor:media, esApertura:1, noAbiertoApertura:noAbierto, numCartas:3/7,
                   manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
-                  abrirSinAportar: hayAlgoAMedias, agotaMunicion: cs.length <= 3 ? 1 : 0 };
+                  abrirSinAportar: hayAlgoAMedias, agotaMunicion: (!yaPositivo && cs.length <= 3) ? 1 : 0,
+                  vaciaManoPositivo: yaPositivo ? 1 : 0 };
       candidatos.push({firma, costo:3, accion:{tipo:"abrir", carta:cs[0].id}, features:f});
     } else if (cs.length === 2 && mano.some(esMono)){
       const media = cs.reduce((s,c) => s + valor(c), 0) / cs.length / 50;
       const f = { valor:media, esApertura:1, noAbiertoApertura:noAbierto, esAperturaAsistida:1,
                   comodinUsado: 1/3, numCartas:3/7, manoBajaSinPositivo: manoBaja(3),
                   escasez: escasez(v, rango), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
-                  abrirSinAportar: hayAlgoAMedias, agotaMunicion: 1 };
+                  abrirSinAportar: hayAlgoAMedias, agotaMunicion: yaPositivo ? 0 : 1,
+                  vaciaManoPositivo: yaPositivo ? 1 : 0 };
       candidatos.push({firma, costo:3, accion:{tipo:"abrir", carta:cs[0].id}, features:f});
     }
   });
@@ -372,7 +390,7 @@ function mejorJugada(v, rechazadas, pesos){
     if (negros.length >= 3){
       const f = { esApertura:1, esTapon:1, noAbiertoApertura:noAbierto, numCartas:3/7,
                   manoBajaSinPositivo: manoBaja(3), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
-                  abrirSinAportar: hayAlgoAMedias };
+                  abrirSinAportar: hayAlgoAMedias, vaciaManoPositivo: yaPositivo ? 1 : 0 };
       candidatos.push({firma:"abrir:3", costo:3, accion:{tipo:"abrir", carta:negros[0].id}, features:f});
     }
   }
@@ -383,7 +401,7 @@ function mejorJugada(v, rechazadas, pesos){
     if (monos.length >= 5){
       const f = { esApertura:1, esComodinMeld:1, noAbiertoApertura:noAbierto, numCartas:5/7,
                   manoBajaSinPositivo: manoBaja(5), rivalSinPositivo: rivalVulnerable, urgenciaRival: urgencia,
-                  abrirSinAportar: hayAlgoAMedias };
+                  abrirSinAportar: hayAlgoAMedias, vaciaManoPositivo: yaPositivo ? 1 : 0 };
       candidatos.push({firma:"abrir:M", costo:5, accion:{tipo:"abrir", carta:monos[0].id}, features:f});
     }
   }
@@ -392,7 +410,8 @@ function mejorJugada(v, rechazadas, pesos){
   // Si el motor obliga a seguir (debeSeguir), no se ofrece: no hay margen
   // para elegir quedarse quieto.
   if (!debeSeguir) candidatos.push({firma:"pasar", costo:0, accion:null,
-    features:{pasar:1, desperdiciaVentaja: rivalVulnerable, desperdiciaUrgencia: urgencia}});
+    features:{pasar:1, desperdiciaVentaja: rivalVulnerable, desperdiciaUrgencia: urgencia,
+      desperdiciaPositivo: yaPositivo ? 1 : 0}});
 
   if (!candidatos.length) return null;
   candidatos.forEach(c => c.score = puntuar(c.features, pesos));
