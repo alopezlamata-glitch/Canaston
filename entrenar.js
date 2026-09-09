@@ -141,14 +141,55 @@ function mutar(pesos, rnd, fuerza){
   return hijo;
 }
 
+/* progresar generación a generación contra el pool no garantiza progresar
+   de verdad: el pool son 6 primos cercanos entre sí (todos descendientes
+   recientes unos de otros), así que es fácil aprender a ganarles a ellos
+   sin jugar mejor en general ("sobreajuste cíclico"). Se comprobó en la
+   práctica: una ronda entera de 150 generaciones, todas con "mejora
+   encontrada", acabó perdiendo 30-37% de las partidas contra el campeón
+   con el que había empezado. Dos contenciones contra esto:
+   1. el campeón inicial de la ronda ("ancla") se queda fijo en pool[0]
+      para siempre, nunca se saca por antigüedad -ver eliminarDelPool-.
+   2. al terminar, el resultado final tiene que ganarle claramente al
+      ancla en un duelo aparte y más largo antes de sobreescribir
+      pesos-bot.json; si no gana, se descarta y se deja el archivo como
+      estaba -ver validarMejoraFinal/main-. */
+function eliminarDelPool(pool, tamano){
+  while (pool.length > tamano) pool.splice(1, 1);   // nunca el índice 0: es el ancla
+}
+
+/* duelo final, más largo y con más mesas que las validaciones de cada
+   generación, para decidir si el resultado de la ronda compensa de
+   verdad frente al ancla. */
+function validarMejoraFinal(ancla, campeon, rnd){
+  const N = 60;   // 120 partidas (ida y vuelta)
+  let victoriasCampeon = 0, total = 0;
+  for (let i = 0; i < N; i++){
+    const mesa = elegirMesa(rnd);
+    const semilla = Math.floor(rnd() * 1e9);
+    const r1 = jugarDuelo(campeon, ancla, semilla, 6000, mesa.n, mesa.parejas);
+    const r2 = jugarDuelo(ancla, campeon, semilla, 6000, mesa.n, mesa.parejas);
+    if (r1.atascado || r2.atascado) continue;
+    total += 2;
+    if (r1.diff > 0) victoriasCampeon++;
+    if (r2.diff < 0) victoriasCampeon++;
+  }
+  const tasa = total ? victoriasCampeon / total : 0;
+  return { gana: total > 0 && tasa > 0.55, tasa, total };
+}
+
 const RUTA_PESOS = path.join(__dirname, "pesos-bot.json");
 const RUTA_ESTADO = path.join(__dirname, ".entrenamiento-estado.json");
 
 const TAMANO_POOL = 6;   // cuántos campeones anteriores se guardan como rivales
 
-function guardarCheckpoint(campeon, pool, fuerzaMutacion, generacionesSinMejora, gCompletada){
-  fs.writeFileSync(RUTA_PESOS, JSON.stringify(campeon, null, 2) + "\n");
-  fs.writeFileSync(RUTA_ESTADO, JSON.stringify({campeon, pool, fuerzaMutacion, generacionesSinMejora, gCompletada}, null, 2) + "\n");
+// durante el entrenamiento solo se guarda el estado reanudable: escribir
+// pesos-bot.json en cada generación significaba que, si la ronda acababa
+// derivando mal, había que restaurarlo a mano después (pasó hoy mismo).
+// Ahora solo se escribe pesos-bot.json una vez, al final, y solo si pasa
+// validarMejoraFinal.
+function guardarEstado(campeon, pool, ancla, fuerzaMutacion, generacionesSinMejora, gCompletada){
+  fs.writeFileSync(RUTA_ESTADO, JSON.stringify({campeon, pool, ancla, fuerzaMutacion, generacionesSinMejora, gCompletada}, null, 2) + "\n");
 }
 
 function main(){
@@ -160,6 +201,7 @@ function main(){
   const rnd = mulberry32(Date.now() >>> 0);
   let campeon = Object.assign({}, Bot.PESOS_INICIALES);
   let pool = [campeon];
+  let ancla = campeon;   // el campeón con el que se empieza esta ronda: nunca se sustituye a pesos-bot.json sin ganarle claramente
   let fuerzaMutacion = 0.5;
   let generacionesSinMejora = 0;
   let gInicio = 1;
@@ -170,6 +212,7 @@ function main(){
       const estado = JSON.parse(fs.readFileSync(RUTA_ESTADO, "utf8"));
       campeon = estado.campeon;
       pool = estado.pool && estado.pool.length ? estado.pool : [campeon];
+      ancla = estado.ancla || pool[0];
       fuerzaMutacion = estado.fuerzaMutacion;
       generacionesSinMejora = estado.generacionesSinMejora;
       gInicio = estado.gCompletada + 1;
@@ -181,6 +224,7 @@ function main(){
     try {
       campeon = Object.assign({}, Bot.PESOS_INICIALES, JSON.parse(fs.readFileSync(RUTA_PESOS, "utf8")));
       pool = [campeon];
+      ancla = campeon;
       console.log("Partiendo de los pesos ya guardados en pesos-bot.json.");
     } catch { console.log("No se pudo leer pesos-bot.json, se empieza de cero."); }
   }
@@ -199,7 +243,7 @@ function main(){
     if (mejorHijo && mejorMargen > 15 && validarSinAtascos(mejorHijo, rnd)){    // margen mínimo para no quedarse con ruido, y sin atascos en las 4 mesas
       campeon = mejorHijo;
       pool.push(campeon);
-      if (pool.length > TAMANO_POOL) pool.shift();
+      eliminarDelPool(pool, TAMANO_POOL);   // nunca saca el ancla (índice 0)
       generacionesSinMejora = 0;
       console.log(`gen ${g}: mejora encontrada, margen +${mejorMargen.toFixed(0)} puntos/partida (pool: ${pool.length})`);
     } else {
@@ -210,12 +254,20 @@ function main(){
       else
         console.log(`gen ${g}: sin mejora (mejor intento ${mejorMargen.toFixed(0)}), fuerza mutación ${fuerzaMutacion.toFixed(2)}`);
     }
-    guardarCheckpoint(campeon, pool, fuerzaMutacion, generacionesSinMejora, g);   // progreso a salvo aunque se corte
+    guardarEstado(campeon, pool, ancla, fuerzaMutacion, generacionesSinMejora, g);   // progreso a salvo aunque se corte, pero no toca pesos-bot.json todavía
   }
 
   fs.unlinkSync(RUTA_ESTADO);
-  console.log("Listo en", ((Date.now()-t0)/1000).toFixed(1), "s. Pesos guardados en pesos-bot.json:");
-  console.log(campeon);
+  console.log("Entrenamiento terminado en", ((Date.now()-t0)/1000).toFixed(1), "s. Validando el resultado contra el ancla antes de guardarlo...");
+
+  const resultado = validarMejoraFinal(ancla, campeon, rnd);
+  if (resultado.gana){
+    fs.writeFileSync(RUTA_PESOS, JSON.stringify(campeon, null, 2) + "\n");
+    console.log(`Le gana al ancla ${(resultado.tasa*100).toFixed(1)}% de ${resultado.total} partidas: guardado en pesos-bot.json.`);
+    console.log(campeon);
+  } else {
+    console.log(`No le gana al ancla con claridad (${(resultado.tasa*100).toFixed(1)}% de ${resultado.total} partidas, hace falta >55%): se descarta esta ronda, pesos-bot.json se deja como estaba.`);
+  }
 }
 
 main();
