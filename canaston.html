@@ -938,13 +938,13 @@ function abandonarPartida(){
    de red. Opera directamente sobre G (aquí no hay nada que ocultar: es el
    mismo dispositivo) llamando a las mismas funciones que usa un humano. */
 const PESOS_BOT={
-  "valor":-3.396363329938973,"cierra":8.390867884066392,"yaCanasta":-12.254730254197224,
-  "comodinUsado":-47.89519740881854,"proximidad":23.544075013540294,"lograPositivo":56.70890127997312,
-  "esApertura":1.4525481767618036,"noAbiertoApertura":-2.4767060217418337,"esTapon":-18.377974234734367,
-  "esComodinMeld":-3.245618667503319,"esAperturaAsistida":2.012577857448867,"numCartas":-24.28984388843749,
-  "manoBajaSinPositivo":-11.400063495188746,"pasar":0.8689544299741593,"dValor":0.4356017563574127,
-  "dComodin":51.45172923709506,"dTresNegro":1.4303908331155952,"dClaveAjena":-1.2389700521931986,
-  "dUnica":0.10327080734415149
+  "valor":2.1527603801528916,"cierra":-3.1260035442044263,"yaCanasta":-19.117794084689283,
+  "comodinUsado":-66.44310931004202,"proximidad":42.20438218448995,"lograPositivo":69.95912076170187,
+  "esApertura":1.3139812882437816,"noAbiertoApertura":-11.3631651447972,"esTapon":-15.496425732886204,
+  "esComodinMeld":-2.69044814573754,"esAperturaAsistida":-0.4965127100236023,"numCartas":-26.12704866275099,
+  "manoBajaSinPositivo":-14.03423699004847,"pasar":-3.64059055754819,"dValor":2.1298941274677614,
+  "dComodin":71.52394648533176,"dTresNegro":-2.950882074386682,"dClaveAjena":-2.0001719266743323,
+  "dUnica":0.31182119990082474
 };
 let botRechazadas=new Set();
 function puntuarBot(f){let s=0;for(const k in f)if(PESOS_BOT[k]!==undefined)s+=PESOS_BOT[k]*f[k];return s;}
